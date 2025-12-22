@@ -25,7 +25,9 @@ $config = require __DIR__ . '/../config/config.php';
 
 $major = (int) ($config['app']['version_major'] ?? 0);
 $minor = (int) ($config['app']['version_minor'] ?? 0);
-$date = gmdate('dmY');
+$date = isset($config['app']['version_date']) && is_string($config['app']['version_date']) && preg_match('/^\d{8}$/', $config['app']['version_date'])
+    ? $config['app']['version_date']
+    : gmdate('dmY');
 if ($major > 0 && $minor > 0) {
     $config['app']['version'] = 'v' . $major . '.' . $date . '.' . str_pad((string) $minor, 3, '0', STR_PAD_LEFT);
 } else {

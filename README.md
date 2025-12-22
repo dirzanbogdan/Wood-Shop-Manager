@@ -4,7 +4,7 @@ Versiune: afișată în footer (ex: `v2.22122025.001`)
 
 Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
 - `major`: versiunea majoră (configurabilă în `config/config.php`)
-- `ddmmyyyy`: data curentă (UTC)
+- `ddmmyyyy`: data release (configurabilă în `config/config.php`; fallback: data curentă UTC)
 - `ttt`: versiunea minoră (configurabilă în `config/config.php`, padding la 3 cifre; începe de la `001`)
 
 ## Cerinte
