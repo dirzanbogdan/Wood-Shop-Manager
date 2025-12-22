@@ -77,6 +77,11 @@ $action = $isEdit ? '/?r=materials/edit&id=' . (int) $material['id'] : '/?r=mate
       </div>
 
       <div class="col-6">
+        <label>URL achizitie (optional)</label>
+        <input name="purchase_url" value="<?= htmlspecialchars((string) ($material['purchase_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+      </div>
+
+      <div class="col-6">
         <label>Stoc minim</label>
         <input name="min_stock" required value="<?= htmlspecialchars((string) ($material['min_stock'] ?? '0'), ENT_QUOTES, 'UTF-8') ?>">
       </div>
@@ -94,4 +99,3 @@ $action = $isEdit ? '/?r=materials/edit&id=' . (int) $material['id'] : '/?r=mate
     </form>
   <?php endif; ?>
 </div>
-

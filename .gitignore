@@ -25,6 +25,9 @@ public/.htpasswd
 # Tool artifacts
 git-error-*
 
+# Backups on server
+storage/backups/
+
 # Node (if ever used)
 node_modules/
 npm-debug.log*

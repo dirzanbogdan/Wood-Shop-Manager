@@ -29,6 +29,7 @@ final class Router
             'production' => \App\Controllers\ProductionController::class,
             'reports' => \App\Controllers\ReportsController::class,
             'settings' => \App\Controllers\SettingsController::class,
+            'update' => \App\Controllers\UpdateController::class,
             'users' => \App\Controllers\UsersController::class,
             'suppliers' => \App\Controllers\SuppliersController::class,
             'materialtypes' => \App\Controllers\MaterialTypesController::class,

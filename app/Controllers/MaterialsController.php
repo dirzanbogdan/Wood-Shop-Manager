@@ -71,6 +71,7 @@ final class MaterialsController extends Controller
             if ($purchaseDate !== null) {
                 $purchaseDate = Validator::requiredDate(['purchase_date' => $purchaseDate], 'purchase_date');
             }
+            $purchaseUrl = Validator::optionalString($_POST, 'purchase_url', 500);
 
             if ($name === null || $typeId === null || $unitId === null || $currentQty === null || $unitCost === null || $minStock === null) {
                 Flash::set('error', 'Campuri invalide.');
@@ -80,8 +81,8 @@ final class MaterialsController extends Controller
             $this->pdo->beginTransaction();
             try {
                 $stmt = $this->pdo->prepare(
-                    "INSERT INTO materials (name, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, min_stock, is_archived, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
+                    "INSERT INTO materials (name, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
                 );
                 $stmt->execute([
                     $name,
@@ -91,6 +92,7 @@ final class MaterialsController extends Controller
                     $currentQty,
                     $unitCost,
                     $purchaseDate,
+                    $purchaseUrl,
                     $minStock,
                 ]);
                 $materialId = (int) $this->pdo->lastInsertId();
@@ -157,6 +159,7 @@ final class MaterialsController extends Controller
             if ($purchaseDate !== null) {
                 $purchaseDate = Validator::requiredDate(['purchase_date' => $purchaseDate], 'purchase_date');
             }
+            $purchaseUrl = Validator::optionalString($_POST, 'purchase_url', 500);
 
             if ($name === null || $typeId === null || $unitId === null || $unitCost === null || $minStock === null) {
                 Flash::set('error', 'Campuri invalide.');
@@ -165,17 +168,17 @@ final class MaterialsController extends Controller
 
             $stmt = $this->pdo->prepare(
                 "UPDATE materials
-                 SET name = ?, material_type_id = ?, supplier_id = ?, unit_id = ?, unit_cost = ?, purchase_date = ?, min_stock = ?, updated_at = UTC_TIMESTAMP()
+                 SET name = ?, material_type_id = ?, supplier_id = ?, unit_id = ?, unit_cost = ?, purchase_date = ?, purchase_url = ?, min_stock = ?, updated_at = UTC_TIMESTAMP()
                  WHERE id = ?"
             );
-            $stmt->execute([$name, $typeId, $supplierId, $unitId, $unitCost, $purchaseDate, $minStock, $id]);
+            $stmt->execute([$name, $typeId, $supplierId, $unitId, $unitCost, $purchaseDate, $purchaseUrl, $minStock, $id]);
 
             Flash::set('success', 'Material actualizat.');
             $this->redirect('materials/edit', ['id' => $id]);
         }
 
         $stmt = $this->pdo->prepare(
-            "SELECT id, name, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, min_stock, is_archived
+            "SELECT id, name, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived
              FROM materials WHERE id = ? LIMIT 1"
         );
         $stmt->execute([$id]);

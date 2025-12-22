@@ -7,6 +7,8 @@ $base = [
         'name' => 'GreenSh3ll Wood Shop Manager',
         'base_url' => '',
         'session_name' => 'gsh3ll_wsm',
+        'version_major' => 2,
+        'version_minor' => 1,
     ],
     'db' => [
         'host' => 'localhost',
@@ -31,4 +33,3 @@ if (is_file($localPath)) {
 }
 
 return $base;
-

@@ -23,6 +23,7 @@ declare(strict_types=1);
 <div class="card" style="margin-top:12px">
   <form method="post" action="/?r=settings/index">
     <input type="hidden" name="<?= htmlspecialchars((string) $csrf_key, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars((string) $csrf, ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="action" value="settings_save">
     <div class="grid">
       <div class="col-6">
         <label>Cost energie electrica (lei / kWh)</label>
@@ -37,4 +38,56 @@ declare(strict_types=1);
       </div>
     </div>
   </form>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <h3 style="margin-top:0">Unitati de masura</h3>
+
+  <form method="post" action="/?r=settings/index" class="row" style="gap:10px; align-items:flex-end; flex-wrap:wrap">
+    <input type="hidden" name="<?= htmlspecialchars((string) $csrf_key, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars((string) $csrf, ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="action" value="unit_create">
+    <div style="min-width:120px">
+      <label>Cod</label>
+      <input name="code" required placeholder="ex: buc">
+    </div>
+    <div style="min-width:220px; flex:1">
+      <label>Denumire</label>
+      <input name="name" required placeholder="ex: Bucata">
+    </div>
+    <button class="btn primary" type="submit">Adauga</button>
+  </form>
+
+  <div style="margin-top:12px; overflow:auto">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:90px">Cod</th>
+          <th>Denumire</th>
+          <th style="width:140px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach (($units ?? []) as $u): ?>
+          <tr>
+            <td colspan="3">
+              <form method="post" action="/?r=settings/index" class="row" style="gap:10px; align-items:flex-end; flex-wrap:wrap">
+                <input type="hidden" name="<?= htmlspecialchars((string) $csrf_key, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars((string) $csrf, ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="action" value="unit_update">
+                <input type="hidden" name="unit_id" value="<?= (int) $u['id'] ?>">
+                <div style="min-width:120px">
+                  <label>Cod</label>
+                  <input name="code" required value="<?= htmlspecialchars((string) $u['code'], ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <div style="min-width:220px; flex:1">
+                  <label>Denumire</label>
+                  <input name="name" required value="<?= htmlspecialchars((string) $u['name'], ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <button class="btn" type="submit">Salveaza</button>
+              </form>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
 </div>

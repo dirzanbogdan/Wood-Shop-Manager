@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS materials (
   current_qty DECIMAL(14,4) NOT NULL DEFAULT 0,
   unit_cost DECIMAL(14,4) NOT NULL DEFAULT 0,
   purchase_date DATE NULL,
+  purchase_url VARCHAR(500) NULL,
   min_stock DECIMAL(14,4) NOT NULL DEFAULT 0,
   is_archived TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL,

@@ -43,6 +43,9 @@ $section = explode('/', $route, 2)[0] ?? '';
           <a class="<?= $section === 'production' ? 'active' : '' ?>" href="/?r=production/index">Productie</a>
           <a class="<?= $section === 'reports' ? 'active' : '' ?>" href="/?r=reports/index">Rapoarte</a>
           <a class="<?= $section === 'settings' ? 'active' : '' ?>" href="/?r=settings/index">Setari</a>
+          <?php if ($user['role'] === 'SuperAdmin'): ?>
+            <a class="<?= $section === 'update' ? 'active' : '' ?>" href="/?r=update/index">Update</a>
+          <?php endif; ?>
           <?php if ($user['role'] === 'SuperAdmin' || $user['role'] === 'Admin'): ?>
             <a class="<?= $section === 'users' ? 'active' : '' ?>" href="/?r=users/index">Utilizatori</a>
           <?php endif; ?>
@@ -66,6 +69,18 @@ $section = explode('/', $route, 2)[0] ?? '';
     <?php endif; ?>
 
     <?= $content ?? '' ?>
+  </div>
+
+  <div class="container" style="margin-top: 18px; padding-bottom: 18px">
+    <div class="row" style="justify-content: space-between; gap: 12px">
+      <div class="muted">© 2025 Green Sh3ll ® – All rights reserved.</div>
+      <div class="muted">
+        <?= htmlspecialchars((string) ($app_version ?? ''), ENT_QUOTES, 'UTF-8') ?>
+        <?php if (isset($git_hash) && is_string($git_hash) && $git_hash !== ''): ?>
+          (<?= htmlspecialchars($git_hash, ENT_QUOTES, 'UTF-8') ?>)
+        <?php endif; ?>
+      </div>
+    </div>
   </div>
 
   <script src="/assets/app.js"></script>
