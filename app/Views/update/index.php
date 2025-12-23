@@ -38,14 +38,30 @@ $canShell = $gitAvailable && (($git_info['can_shell'] ?? false) === true);
   <div class="col-6">
     <div class="card">
       <h3 style="margin-top:0">2) Modificari incluse</h3>
-      <?php if (isset($changes) && is_array($changes) && $changes): ?>
-        <ul style="margin: 8px 0 0 18px">
-          <?php foreach ($changes as $c): ?>
-            <li><?= $esc((string) $c) ?></li>
+      <?php if (isset($changelog) && is_array($changelog) && $changelog): ?>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px">
+          <?php foreach ($changelog as $entry): ?>
+            <?php
+              $ver = isset($entry['version']) ? (string) $entry['version'] : '';
+              $items = isset($entry['items']) && is_array($entry['items']) ? $entry['items'] : [];
+              $open = $ver !== '' && (string) ($current_version ?? '') !== '' && str_starts_with((string) ($current_version ?? ''), $ver);
+            ?>
+            <details <?= $open ? 'open' : '' ?>>
+              <summary style="cursor:pointer; user-select:none"><?= $esc($ver) ?></summary>
+              <?php if ($items): ?>
+                <ul style="margin: 8px 0 0 18px">
+                  <?php foreach ($items as $c): ?>
+                    <li><?= $esc((string) $c) ?></li>
+                  <?php endforeach; ?>
+                </ul>
+              <?php else: ?>
+                <div class="muted" style="margin-top:8px">Nu exista informatii.</div>
+              <?php endif; ?>
+            </details>
           <?php endforeach; ?>
-        </ul>
+        </div>
       <?php else: ?>
-        <div class="muted">Nu exista informatii.</div>
+        <div class="muted">Nu exista informatii. Lipseste fisierul <code>CHANGELOG.md</code>.</div>
       <?php endif; ?>
 
       <div style="margin-top: 12px">
@@ -64,4 +80,3 @@ $canShell = $gitAvailable && (($git_info['can_shell'] ?? false) === true);
     </div>
   </div>
 </div>
-

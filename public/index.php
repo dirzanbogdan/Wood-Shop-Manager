@@ -23,4 +23,15 @@ try {
     exit;
 }
 
+try {
+    $stmt = $pdo->prepare("SELECT `value` FROM settings WHERE `key` = 'timezone' LIMIT 1");
+    $stmt->execute();
+    $tz = $stmt->fetch();
+    $tzValue = is_array($tz) && isset($tz['value']) ? (string) $tz['value'] : '';
+    if ($tzValue !== '' && in_array($tzValue, timezone_identifiers_list(), true)) {
+        date_default_timezone_set($tzValue);
+    }
+} catch (Throwable $e) {
+}
+
 Router::dispatch($config, $pdo);

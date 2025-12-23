@@ -182,11 +182,13 @@ final class BomController extends Controller
         }
 
         $machineId = Validator::requiredInt($_POST, 'machine_id', 1);
-        $hours = Validator::requiredDecimal($_POST, 'hours', 0.01);
-        if ($machineId === null || $hours === null) {
+        $minutes = Validator::requiredInt($_POST, 'minutes', 1);
+        if ($machineId === null || $minutes === null) {
             Flash::set('error', 'Campuri invalide.');
             $this->redirect('bom/edit', ['id' => $productId]);
         }
+
+        $hours = round(((float) $minutes) / 60.0, 6);
 
         $stmt = $this->pdo->prepare(
             "INSERT INTO bom_machines (product_id, machine_id, hours, created_at, updated_at)

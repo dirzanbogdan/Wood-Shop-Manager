@@ -98,8 +98,8 @@ declare(strict_types=1);
               </select>
             </div>
             <div class="col-12">
-              <label>Ore / unitate</label>
-              <input name="hours" required>
+              <label>Minute / unitate</label>
+              <input name="minutes" type="number" min="1" step="1" required>
             </div>
             <div class="col-12 row" style="justify-content:flex-end">
               <button class="btn primary small" type="submit">Adauga/Update</button>
@@ -110,13 +110,13 @@ declare(strict_types=1);
 
       <table style="margin-top:12px">
         <thead>
-        <tr><th>Utilaj</th><th>Ore/unit</th><th>Status</th><th></th></tr>
+        <tr><th>Utilaj</th><th>Minute/unit</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
         <?php foreach ($machines as $bmc): ?>
           <tr>
             <td><?= htmlspecialchars((string) $bmc['machine_name'], ENT_QUOTES, 'UTF-8') ?></td>
-            <td><?= number_format((float) $bmc['hours'], 2) ?></td>
+            <td><?= number_format((float) $bmc['hours'] * 60, 0) ?></td>
             <td>
               <span class="badge <?= (int) $bmc['is_active'] === 1 ? 'ok' : 'danger' ?>">
                 <?= (int) $bmc['is_active'] === 1 ? 'Activ' : 'Inactiv' ?>
@@ -137,4 +137,3 @@ declare(strict_types=1);
     </div>
   </div>
 </div>
-

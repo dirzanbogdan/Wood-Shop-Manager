@@ -45,7 +45,7 @@ final class UpdateController extends Controller
 
         $currentVersion = isset($this->config['app']['version']) ? (string) $this->config['app']['version'] : '';
         $git = $this->gitInfo();
-        $changes = $this->currentUpdateNotes();
+        $changelog = $this->loadChangelog();
 
         $this->render('update/index', [
             'title' => 'Update',
@@ -53,7 +53,7 @@ final class UpdateController extends Controller
             'csrf_key' => $csrfKey,
             'current_version' => $currentVersion,
             'git_info' => $git,
-            'changes' => $changes,
+            'changelog' => $changelog,
         ]);
     }
 
@@ -229,15 +229,43 @@ final class UpdateController extends Controller
         return ['ok' => $code === 0, 'message' => $msg];
     }
 
-    private function currentUpdateNotes(): array
+    private function loadChangelog(): array
     {
-        return [
-            'Versiune calculata automat: V<major>.<ddmmyyyy>.<ttt> (afisata in footer).',
-            'Materie prima: camp nou URL achizitie (necesita ALTER TABLE).',
-            "SQL: ALTER TABLE materials ADD COLUMN purchase_url VARCHAR(500) NULL AFTER purchase_date;",
-            'Setari: administrare unitati de masura (adaugare/editare).',
-            'Update: backup DB + aplicare update din git (SuperAdmin).',
-            'Install: handler de erori pentru diagnosticare HTTP 500.',
-        ];
+        $root = $this->projectRoot();
+        $path = $root . DIRECTORY_SEPARATOR . 'CHANGELOG.md';
+        if (!is_file($path)) {
+            return [];
+        }
+
+        $raw = (string) file_get_contents($path);
+        $lines = preg_split("/\r\n|\n|\r/", $raw) ?: [];
+
+        $versions = [];
+        $current = '';
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+            if (preg_match('/^##\s+(.+)$/', $line, $m)) {
+                $current = trim((string) $m[1]);
+                if ($current !== '' && !isset($versions[$current])) {
+                    $versions[$current] = [];
+                }
+                continue;
+            }
+            if ($current === '') {
+                continue;
+            }
+            if (preg_match('/^-+\s+(.*)$/', $line, $m)) {
+                $versions[$current][] = trim((string) $m[1]);
+            }
+        }
+
+        $out = [];
+        foreach ($versions as $v => $items) {
+            $out[] = ['version' => $v, 'items' => $items];
+        }
+        return $out;
     }
 }

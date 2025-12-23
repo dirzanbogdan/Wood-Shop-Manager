@@ -5,7 +5,7 @@ declare(strict_types=1);
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-date_default_timezone_set('UTC');
+date_default_timezone_set('Europe/Bucharest');
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'App\\';

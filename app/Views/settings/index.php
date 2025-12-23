@@ -33,6 +33,20 @@ declare(strict_types=1);
         <label>Cost orar operator (lei / ora)</label>
         <input name="operator_hourly_cost" required value="<?= htmlspecialchars((string) $operator_hourly_cost, ENT_QUOTES, 'UTF-8') ?>">
       </div>
+      <div class="col-6">
+        <label>Timezone</label>
+        <select name="timezone" required>
+          <?php
+            $tzList = ['Europe/Bucharest', 'UTC', 'Europe/London', 'Europe/Berlin', 'America/New_York'];
+            $tzCurrent = (string) ($timezone ?? 'Europe/Bucharest');
+          ?>
+          <?php foreach ($tzList as $tz): ?>
+            <option value="<?= htmlspecialchars($tz, ENT_QUOTES, 'UTF-8') ?>" <?= $tzCurrent === $tz ? 'selected' : '' ?>>
+              <?= htmlspecialchars($tz, ENT_QUOTES, 'UTF-8') ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
       <div class="col-12 row" style="justify-content:flex-end">
         <button class="btn primary" type="submit">Salveaza</button>
       </div>
@@ -83,6 +97,12 @@ declare(strict_types=1);
                   <input name="name" required value="<?= htmlspecialchars((string) $u['name'], ENT_QUOTES, 'UTF-8') ?>">
                 </div>
                 <button class="btn" type="submit">Salveaza</button>
+              </form>
+              <form method="post" action="/?r=settings/index" style="margin-top:8px">
+                <input type="hidden" name="<?= htmlspecialchars((string) $csrf_key, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars((string) $csrf, ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="action" value="unit_delete">
+                <input type="hidden" name="unit_id" value="<?= (int) $u['id'] ?>">
+                <button class="btn danger small" type="submit" onclick="return confirm('Stergi unitatea?');">Sterge</button>
               </form>
             </td>
           </tr>

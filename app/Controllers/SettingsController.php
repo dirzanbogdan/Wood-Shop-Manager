@@ -29,13 +29,22 @@ final class SettingsController extends Controller
             if ($action === '' || $action === 'settings_save') {
                 $energy = Validator::requiredDecimal($_POST, 'energy_cost_per_kwh', 0);
                 $hourly = Validator::requiredDecimal($_POST, 'operator_hourly_cost', 0);
+                $timezone = Validator::optionalString($_POST, 'timezone', 64);
                 if ($energy === null || $hourly === null) {
                     Flash::set('error', 'Valori invalide.');
+                    $this->redirect('settings/index');
+                }
+                if ($timezone === null || $timezone === '') {
+                    $timezone = 'Europe/Bucharest';
+                }
+                if (!in_array($timezone, timezone_identifiers_list(), true)) {
+                    Flash::set('error', 'Timezone invalid.');
                     $this->redirect('settings/index');
                 }
 
                 $this->setSetting('energy_cost_per_kwh', $energy);
                 $this->setSetting('operator_hourly_cost', $hourly);
+                $this->setSetting('timezone', $timezone);
 
                 Flash::set('success', 'Setari salvate.');
                 $this->redirect('settings/index');
@@ -77,6 +86,36 @@ final class SettingsController extends Controller
                 }
                 $this->redirect('settings/index');
             }
+
+            if ($action === 'unit_delete') {
+                $id = Validator::requiredInt($_POST, 'unit_id', 1);
+                if ($id === null) {
+                    Flash::set('error', 'Cerere invalida.');
+                    $this->redirect('settings/index');
+                }
+
+                $m = $this->pdo->prepare("SELECT COUNT(*) AS c FROM materials WHERE unit_id = ?");
+                $m->execute([$id]);
+                $materialsCnt = (int) ($m->fetch()['c'] ?? 0);
+
+                $bm = $this->pdo->prepare("SELECT COUNT(*) AS c FROM bom_materials WHERE unit_id = ?");
+                $bm->execute([$id]);
+                $bomCnt = (int) ($bm->fetch()['c'] ?? 0);
+
+                if ($materialsCnt > 0 || $bomCnt > 0) {
+                    Flash::set('error', 'Unitate folosita in sistem (materiale/BOM). Nu se poate sterge.');
+                    $this->redirect('settings/index');
+                }
+
+                try {
+                    $del = $this->pdo->prepare("DELETE FROM units WHERE id = ? LIMIT 1");
+                    $del->execute([$id]);
+                    Flash::set('success', 'Unitate stearsa.');
+                } catch (\Throwable $e) {
+                    Flash::set('error', 'Nu se poate sterge unitatea.');
+                }
+                $this->redirect('settings/index');
+            }
         }
 
         $units = $this->pdo->query("SELECT id, code, name FROM units ORDER BY code ASC")->fetchAll();
@@ -87,6 +126,7 @@ final class SettingsController extends Controller
             'csrf_key' => $csrfKey,
             'energy_cost_per_kwh' => $this->getSetting('energy_cost_per_kwh', '1.00'),
             'operator_hourly_cost' => $this->getSetting('operator_hourly_cost', '0.00'),
+            'timezone' => $this->getSetting('timezone', 'Europe/Bucharest'),
             'units' => $units,
         ]);
     }

@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS bom_machines (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   product_id BIGINT UNSIGNED NOT NULL,
   machine_id BIGINT UNSIGNED NOT NULL,
-  hours DECIMAL(10,2) NOT NULL,
+  hours DECIMAL(10,4) NOT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS production_machine_usage (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   production_order_id BIGINT UNSIGNED NOT NULL,
   machine_id BIGINT UNSIGNED NOT NULL,
-  hours_used DECIMAL(10,2) NOT NULL,
+  hours_used DECIMAL(10,4) NOT NULL,
   power_kw DECIMAL(10,4) NOT NULL,
   energy_kwh DECIMAL(14,4) NOT NULL,
   cost DECIMAL(14,4) NOT NULL,
@@ -253,7 +253,8 @@ CREATE TABLE IF NOT EXISTS sales (
 
 INSERT IGNORE INTO settings (`key`, `value`) VALUES
   ('energy_cost_per_kwh', '1.00'),
-  ('operator_hourly_cost', '0.00');
+  ('operator_hourly_cost', '0.00'),
+  ('timezone', 'Europe/Bucharest');
 
 INSERT IGNORE INTO units (id, code, name, created_at, updated_at) VALUES
   (1, 'buc', 'Bucata', UTC_TIMESTAMP(), UTC_TIMESTAMP()),
