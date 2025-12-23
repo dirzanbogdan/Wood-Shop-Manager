@@ -13,6 +13,7 @@
 - UI: câmpurile de dată acceptă și format dd/mm/yyyy
 - Update: backup DB (download `.sql` sau salvare în `storage/backups/`)
 - Update: aplicare update din git (`git pull --ff-only`) când există `.git` și `proc_open` este permis
+- Update: compatibilitate îmbunătățită pentru `git pull` rulat din GUI (PATH/HOME/safe.directory)
 - Update: aplicare update din arhivă GitHub (zip) când git nu este disponibil + aplicare update DB
 - Fix: eliminat `curl_close()` (deprecated în PHP 8.4+)
 

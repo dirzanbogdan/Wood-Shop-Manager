@@ -163,6 +163,81 @@ final class UpdateController extends Controller
         return $root;
     }
 
+    private function gitBin(): string
+    {
+        $candidates = [
+            '/usr/bin/git',
+            '/usr/local/bin/git',
+            '/bin/git',
+            '/usr/local/git/bin/git',
+        ];
+        foreach ($candidates as $p) {
+            if (is_file($p) && is_executable($p)) {
+                return $p;
+            }
+        }
+        return 'git';
+    }
+
+    private function gitEnv(string $root): array
+    {
+        $path = (string) getenv('PATH');
+        if (trim($path) === '') {
+            $path = '/usr/local/bin:/usr/bin:/bin';
+        }
+
+        $cacheDir = $root . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'cache';
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+        $tmpDir = $root . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'tmp';
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0755, true);
+        }
+
+        return array_merge($_ENV, [
+            'PATH' => $path,
+            'HOME' => $tmpDir,
+            'GIT_TERMINAL_PROMPT' => '0',
+            'LANG' => 'C',
+            'GIT_CONFIG_GLOBAL' => $cacheDir . DIRECTORY_SEPARATOR . 'gitconfig',
+        ]);
+    }
+
+    private function runGit(array $args, string $cwd, array $env): array
+    {
+        if (!function_exists('proc_open')) {
+            return ['ok' => false, 'code' => 127, 'out' => '', 'err' => 'proc_open este dezactivat pe server.'];
+        }
+
+        $bin = $this->gitBin();
+        $cmd = $bin . ' ' . implode(' ', array_map('escapeshellarg', $args));
+        $spec = [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $proc = @proc_open($cmd, $spec, $pipes, $cwd, $env);
+        if (!is_resource($proc)) {
+            $last = error_get_last();
+            $msg = isset($last['message']) && is_string($last['message']) ? $last['message'] : 'Nu pot porni git.';
+            return ['ok' => false, 'code' => 127, 'out' => '', 'err' => $msg];
+        }
+
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $code = proc_close($proc);
+
+        return [
+            'ok' => $code === 0,
+            'code' => $code,
+            'out' => trim((string) $stdout),
+            'err' => trim((string) $stderr),
+        ];
+    }
+
     private function gitInfo(): array
     {
         $root = $this->projectRoot();
@@ -173,39 +248,18 @@ final class UpdateController extends Controller
 
         $canShell = function_exists('proc_open');
         if ($canShell) {
-            $env = array_merge($_ENV, [
-                'GIT_TERMINAL_PROMPT' => '0',
-                'LANG' => 'C',
-            ]);
-            $spec = [
-                1 => ['pipe', 'w'],
-                2 => ['pipe', 'w'],
-            ];
-
-            $proc1 = proc_open('git rev-parse --abbrev-ref HEAD', $spec, $pipes1, $root, $env);
             $branch = '';
-            if (is_resource($proc1)) {
-                $out1 = trim((string) stream_get_contents($pipes1[1]));
-                stream_get_contents($pipes1[2]);
-                fclose($pipes1[1]);
-                fclose($pipes1[2]);
-                $code1 = proc_close($proc1);
-                if ($code1 === 0 && $out1 !== '' && $out1 !== 'HEAD') {
-                    $branch = $out1;
-                }
+            $short = '';
+            $env = $this->gitEnv($root);
+
+            $r1 = $this->runGit(['rev-parse', '--abbrev-ref', 'HEAD'], $root, $env);
+            if (($r1['out'] ?? '') !== '' && (string) ($r1['out'] ?? '') !== 'HEAD') {
+                $branch = (string) $r1['out'];
             }
 
-            $proc2 = proc_open('git rev-parse --short HEAD', $spec, $pipes2, $root, $env);
-            $short = '';
-            if (is_resource($proc2)) {
-                $out2 = trim((string) stream_get_contents($pipes2[1]));
-                stream_get_contents($pipes2[2]);
-                fclose($pipes2[1]);
-                fclose($pipes2[2]);
-                $code2 = proc_close($proc2);
-                if ($code2 === 0 && preg_match('/^[0-9a-f]{7,40}$/i', $out2)) {
-                    $short = substr($out2, 0, 7);
-                }
+            $r2 = $this->runGit(['rev-parse', '--short', 'HEAD'], $root, $env);
+            if (preg_match('/^[0-9a-f]{7,40}$/i', (string) ($r2['out'] ?? ''))) {
+                $short = substr((string) $r2['out'], 0, 7);
             }
 
             return [
@@ -245,35 +299,15 @@ final class UpdateController extends Controller
         if (!is_dir($root . DIRECTORY_SEPARATOR . '.git')) {
             return ['ok' => false, 'message' => 'Proiectul nu pare clonat cu git pe server.'];
         }
-        if (!function_exists('proc_open')) {
-            return ['ok' => false, 'message' => 'proc_open este dezactivat pe server.'];
+        $env = $this->gitEnv($root);
+
+        $pull = $this->runGit(['pull', '--ff-only'], $root, $env);
+        $out = (string) ($pull['out'] ?? '');
+        $err = (string) ($pull['err'] ?? '');
+        $msg = trim($out !== '' ? $out : $err);
+        if ($msg === '') {
+            $msg = 'Fara output.';
         }
-
-        $env = array_merge($_ENV, [
-            'GIT_TERMINAL_PROMPT' => '0',
-            'LANG' => 'C',
-        ]);
-
-        $cmd = 'git pull --ff-only';
-        $spec = [
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $proc = proc_open($cmd, $spec, $pipes, $root, $env);
-        if (!is_resource($proc)) {
-            return ['ok' => false, 'message' => 'Nu pot porni git.'];
-        }
-
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        $code = proc_close($proc);
-        $out = trim((string) $stdout);
-        $err = trim((string) $stderr);
-        $msg = $out !== '' ? $out : ($err !== '' ? $err : 'Fara output.');
 
         $isOkByOutput = false;
         $combined = trim($out . "\n" . $err);
@@ -281,23 +315,35 @@ final class UpdateController extends Controller
             $isOkByOutput = (bool) preg_match('/\b(Already up[ -]to[ -]date\.|Fast-forward|Updating\s+[0-9a-f]{7,40}\.\.[0-9a-f]{7,40})\b/i', $combined);
         }
 
-        $ok = $code === 0 || $isOkByOutput;
+        $ok = (($pull['code'] ?? 1) === 0) || $isOkByOutput;
+        if (!$ok && preg_match('/dubious ownership|safe\.directory/i', $combined)) {
+            $this->runGit(['config', '--global', '--add', 'safe.directory', $root], $root, $env);
+            $pull2 = $this->runGit(['pull', '--ff-only'], $root, $env);
+            $out = (string) ($pull2['out'] ?? '');
+            $err = (string) ($pull2['err'] ?? '');
+            $combined = trim($out . "\n" . $err);
+            $msg = trim($out !== '' ? $out : $err);
+            if ($msg === '') {
+                $msg = 'Fara output.';
+            }
+            $isOkByOutput = $combined !== '' && (bool) preg_match('/\b(Already up[ -]to[ -]date\.|Fast-forward|Updating\s+[0-9a-f]{7,40}\.\.[0-9a-f]{7,40})\b/i', $combined);
+            $ok = (($pull2['code'] ?? 1) === 0) || $isOkByOutput;
+        }
+
+        if (!$ok && preg_match('/not found|No such file or directory/i', $combined) && str_contains($combined, 'git')) {
+            $msg = $msg . "\n" . 'Sugestie: pe server, git nu este in PATH pentru PHP. Foloseste update din arhiva GitHub (zip) sau seteaza PATH/HOME pentru PHP.';
+        }
+
         if ($ok) {
             clearstatcache(true);
             if (function_exists('opcache_reset')) {
                 @opcache_reset();
             }
 
-            $procHead = proc_open('git rev-parse --short HEAD', $spec, $pipesHead, $root, $env);
-            if (is_resource($procHead)) {
-                $headOut = trim((string) stream_get_contents($pipesHead[1]));
-                stream_get_contents($pipesHead[2]);
-                fclose($pipesHead[1]);
-                fclose($pipesHead[2]);
-                $headCode = proc_close($procHead);
-                if ($headCode === 0 && preg_match('/^[0-9a-f]{7,40}$/i', $headOut)) {
-                    $msg = trim($msg . "\nHEAD: " . substr($headOut, 0, 7));
-                }
+            $head = $this->runGit(['rev-parse', '--short', 'HEAD'], $root, $env);
+            $headOut = (string) ($head['out'] ?? '');
+            if (preg_match('/^[0-9a-f]{7,40}$/i', $headOut)) {
+                $msg = trim($msg . "\nHEAD: " . substr($headOut, 0, 7));
             }
         }
 
