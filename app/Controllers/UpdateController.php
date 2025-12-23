@@ -171,6 +171,51 @@ final class UpdateController extends Controller
             return ['available' => false];
         }
 
+        $canShell = function_exists('proc_open');
+        if ($canShell) {
+            $env = array_merge($_ENV, [
+                'GIT_TERMINAL_PROMPT' => '0',
+                'LANG' => 'C',
+            ]);
+            $spec = [
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w'],
+            ];
+
+            $proc1 = proc_open('git rev-parse --abbrev-ref HEAD', $spec, $pipes1, $root, $env);
+            $branch = '';
+            if (is_resource($proc1)) {
+                $out1 = trim((string) stream_get_contents($pipes1[1]));
+                stream_get_contents($pipes1[2]);
+                fclose($pipes1[1]);
+                fclose($pipes1[2]);
+                $code1 = proc_close($proc1);
+                if ($code1 === 0 && $out1 !== '' && $out1 !== 'HEAD') {
+                    $branch = $out1;
+                }
+            }
+
+            $proc2 = proc_open('git rev-parse --short HEAD', $spec, $pipes2, $root, $env);
+            $short = '';
+            if (is_resource($proc2)) {
+                $out2 = trim((string) stream_get_contents($pipes2[1]));
+                stream_get_contents($pipes2[2]);
+                fclose($pipes2[1]);
+                fclose($pipes2[2]);
+                $code2 = proc_close($proc2);
+                if ($code2 === 0 && preg_match('/^[0-9a-f]{7,40}$/i', $out2)) {
+                    $short = substr($out2, 0, 7);
+                }
+            }
+
+            return [
+                'available' => true,
+                'branch' => $branch,
+                'hash' => $short,
+                'can_shell' => true,
+            ];
+        }
+
         $headValue = trim((string) file_get_contents($head));
         $hash = '';
         $branch = '';
@@ -186,13 +231,11 @@ final class UpdateController extends Controller
         }
 
         $short = (preg_match('/^[0-9a-f]{40}$/i', $hash) ? substr($hash, 0, 7) : '');
-
-        $canShell = function_exists('proc_open');
         return [
             'available' => true,
             'branch' => $branch,
             'hash' => $short,
-            'can_shell' => $canShell,
+            'can_shell' => false,
         ];
     }
 
@@ -238,7 +281,27 @@ final class UpdateController extends Controller
             $isOkByOutput = (bool) preg_match('/\b(Already up[ -]to[ -]date\.|Fast-forward|Updating\s+[0-9a-f]{7,40}\.\.[0-9a-f]{7,40})\b/i', $combined);
         }
 
-        return ['ok' => $code === 0 || $isOkByOutput, 'message' => $msg];
+        $ok = $code === 0 || $isOkByOutput;
+        if ($ok) {
+            clearstatcache(true);
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+            }
+
+            $procHead = proc_open('git rev-parse --short HEAD', $spec, $pipesHead, $root, $env);
+            if (is_resource($procHead)) {
+                $headOut = trim((string) stream_get_contents($pipesHead[1]));
+                stream_get_contents($pipesHead[2]);
+                fclose($pipesHead[1]);
+                fclose($pipesHead[2]);
+                $headCode = proc_close($procHead);
+                if ($headCode === 0 && preg_match('/^[0-9a-f]{7,40}$/i', $headOut)) {
+                    $msg = trim($msg . "\nHEAD: " . substr($headOut, 0, 7));
+                }
+            }
+        }
+
+        return ['ok' => $ok, 'message' => $msg];
     }
 
     private function runZipUpdate(): array
