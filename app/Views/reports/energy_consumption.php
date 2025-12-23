@@ -19,8 +19,8 @@ $qs = http_build_query(['r' => 'reports/energyConsumption', 'range' => $range, '
           <option value="this_year" <?= ($range ?? '') === 'this_year' ? 'selected' : '' ?>>Anul curent</option>
           <option value="last_year" <?= ($range ?? '') === 'last_year' ? 'selected' : '' ?>>Anul trecut</option>
         </select>
-        <input type="date" name="from" value="<?= htmlspecialchars((string) $from, ENT_QUOTES, 'UTF-8') ?>">
-        <input type="date" name="to" value="<?= htmlspecialchars((string) $to, ENT_QUOTES, 'UTF-8') ?>">
+        <input name="from" placeholder="dd/mm/yyyy" value="<?= htmlspecialchars(isset($date_dmy) ? $date_dmy((string) $from) : (string) $from, ENT_QUOTES, 'UTF-8') ?>">
+        <input name="to" placeholder="dd/mm/yyyy" value="<?= htmlspecialchars(isset($date_dmy) ? $date_dmy((string) $to) : (string) $to, ENT_QUOTES, 'UTF-8') ?>">
         <button class="btn small" type="submit">Filtreaza</button>
       </form>
       <a class="btn small" href="/?<?= htmlspecialchars($qs, ENT_QUOTES, 'UTF-8') ?>">Export CSV</a>

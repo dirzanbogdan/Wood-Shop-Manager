@@ -98,11 +98,16 @@ final class Validator
         if ($raw === '') {
             return null;
         }
-        $d = \DateTime::createFromFormat('Y-m-d', $raw);
-        if (!$d || $d->format('Y-m-d') !== $raw) {
+        $normalized = $raw;
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $raw, $m)) {
+            $normalized = $m[3] . '-' . $m[2] . '-' . $m[1];
+        }
+
+        $d = \DateTime::createFromFormat('Y-m-d', $normalized);
+        if (!$d || $d->format('Y-m-d') !== $normalized) {
             return null;
         }
-        return $raw;
+        return $normalized;
     }
 
     public static function passwordComplex(string $password, int $minLength = 12): bool

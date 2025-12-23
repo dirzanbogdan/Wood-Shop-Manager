@@ -85,7 +85,8 @@ $action = $isEdit ? '/?r=materials/edit&id=' . (int) $material['id'] : '/?r=mate
 
       <div class="col-6">
         <label>Data achizitiei</label>
-        <input name="purchase_date" type="date" value="<?= htmlspecialchars((string) ($material['purchase_date'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+        <?php $pd = (string) ($material['purchase_date'] ?? ''); ?>
+        <input name="purchase_date" placeholder="dd/mm/yyyy" value="<?= htmlspecialchars(isset($date_dmy) ? $date_dmy($pd) : $pd, ENT_QUOTES, 'UTF-8') ?>">
       </div>
 
       <div class="col-6">
