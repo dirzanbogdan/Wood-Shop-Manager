@@ -44,9 +44,8 @@ $canShell = $gitAvailable && (($git_info['can_shell'] ?? false) === true);
             <?php
               $ver = isset($entry['version']) ? (string) $entry['version'] : '';
               $items = isset($entry['items']) && is_array($entry['items']) ? $entry['items'] : [];
-              $open = $ver !== '' && (string) ($current_version ?? '') !== '' && str_starts_with((string) ($current_version ?? ''), $ver);
             ?>
-            <details <?= $open ? 'open' : '' ?>>
+            <details>
               <summary style="cursor:pointer; user-select:none"><?= $esc($ver) ?></summary>
               <?php if ($items): ?>
                 <ul style="margin: 8px 0 0 18px">
