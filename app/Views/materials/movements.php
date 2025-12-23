@@ -61,7 +61,7 @@ declare(strict_types=1);
     <tbody>
       <?php foreach ($movements as $mv): ?>
         <tr>
-          <td><?= htmlspecialchars((string) $mv['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= htmlspecialchars(isset($date_dmy) ? $date_dmy($mv['created_at']) : (string) $mv['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= htmlspecialchars((string) $mv['movement_type'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= number_format((float) $mv['qty'], 4) ?></td>
           <td><?= $mv['unit_cost'] === null ? '-' : number_format((float) $mv['unit_cost'], 4) ?></td>

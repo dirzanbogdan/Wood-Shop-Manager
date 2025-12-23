@@ -66,6 +66,25 @@ abstract class Controller
         $toCurrency = static fn ($lei): float => $rate > 0 ? ((float) $lei / $rate) : (float) $lei;
         $fromCurrency = static fn ($amount): float => (float) $amount * $rate;
         $money = static fn ($lei, int $decimals = 2): string => number_format($toCurrency($lei), $decimals) . ' ' . $currencyLabel;
+        $dateDmy = static function ($raw): string {
+            if ($raw === null) {
+                return '';
+            }
+            $s = trim((string) $raw);
+            if ($s === '') {
+                return '';
+            }
+            if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $s, $m)) {
+                return $m[3] . '/' . $m[2] . '/' . $m[1];
+            }
+            if (preg_match('/^(\d{2})\.(\d{2})\.(\d{4})/', $s, $m)) {
+                return $m[1] . '/' . $m[2] . '/' . $m[3];
+            }
+            if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {
+                return $s;
+            }
+            return $s;
+        };
 
         $fxRates = [
             'lei' => 1.0,
@@ -86,6 +105,7 @@ abstract class Controller
             'money' => $money,
             'to_currency' => $toCurrency,
             'from_currency' => $fromCurrency,
+            'date_dmy' => $dateDmy,
             'fx_rate' => $rate,
             'fx_date' => (string) ($fx['date'] ?? ''),
             'fx_rates' => $fxRates,

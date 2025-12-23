@@ -35,8 +35,8 @@ declare(strict_types=1);
           <td><?= (int) $o['qty'] ?></td>
           <td><span class="badge"><?= htmlspecialchars((string) $o['status'], ENT_QUOTES, 'UTF-8') ?></span></td>
           <td><?= htmlspecialchars((string) $o['operator_name'], ENT_QUOTES, 'UTF-8') ?></td>
-          <td><?= htmlspecialchars((string) $o['started_at'], ENT_QUOTES, 'UTF-8') ?></td>
-          <td><?= $o['completed_at'] ? htmlspecialchars((string) $o['completed_at'], ENT_QUOTES, 'UTF-8') : '-' ?></td>
+          <td><?= htmlspecialchars(isset($date_dmy) ? $date_dmy($o['started_at']) : (string) $o['started_at'], ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= $o['completed_at'] ? htmlspecialchars(isset($date_dmy) ? $date_dmy($o['completed_at']) : (string) $o['completed_at'], ENT_QUOTES, 'UTF-8') : '-' ?></td>
           <td><?= $o['total_cost'] === null ? '-' : (isset($money) ? $money((float) $o['total_cost'], 2) : number_format((float) $o['total_cost'], 2)) ?></td>
           <td><?= $o['cost_per_unit'] === null ? '-' : (isset($money) ? $money((float) $o['cost_per_unit'], 2) : number_format((float) $o['cost_per_unit'], 2)) ?></td>
           <td class="row" style="justify-content:flex-end">

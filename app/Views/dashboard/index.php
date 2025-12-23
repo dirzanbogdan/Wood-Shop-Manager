@@ -54,7 +54,7 @@ declare(strict_types=1);
               <td><?= htmlspecialchars((string) $po['product_name'], ENT_QUOTES, 'UTF-8') ?></td>
               <td><?= (int) $po['qty'] ?></td>
               <td><?= htmlspecialchars((string) $po['operator_name'], ENT_QUOTES, 'UTF-8') ?></td>
-              <td><?= htmlspecialchars((string) $po['started_at'], ENT_QUOTES, 'UTF-8') ?></td>
+              <td><?= htmlspecialchars(isset($date_dmy) ? $date_dmy($po['started_at']) : (string) $po['started_at'], ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
           <?php endforeach; ?>
           </tbody>

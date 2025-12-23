@@ -34,7 +34,7 @@ declare(strict_types=1);
               <?= (int) $u['is_active'] === 1 ? 'Activ' : 'Inactiv' ?>
             </span>
           </td>
-          <td><?= $u['last_login_at'] ? htmlspecialchars((string) $u['last_login_at'], ENT_QUOTES, 'UTF-8') : '-' ?></td>
+          <td><?= $u['last_login_at'] ? htmlspecialchars(isset($date_dmy) ? $date_dmy($u['last_login_at']) : (string) $u['last_login_at'], ENT_QUOTES, 'UTF-8') : '-' ?></td>
           <td class="row" style="justify-content:flex-end">
             <a class="btn small" href="/?r=users/edit&id=<?= (int) $u['id'] ?>">Editeaza</a>
           </td>
@@ -43,4 +43,3 @@ declare(strict_types=1);
     </tbody>
   </table>
 </div>
-
