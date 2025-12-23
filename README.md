@@ -56,10 +56,12 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
 - Monedă:
   - curs BNR pentru EUR/USD (afișare și conversie la salvare)
   - selectare monedă în formulare pentru sume (ex: prețuri în USD/EUR)
+  - salvare automată a valorilor în lei în baza de date
 - Update (SuperAdmin):
   - backup DB (download pe PC sau salvare pe server)
   - listă modificări incluse
   - aplicare update din git (`git pull --ff-only`) dacă `proc_open` este permis și există `.git`
+  - aplicare update din arhiva GitHub (zip) dacă git nu este disponibil
 
 ## Instalare
 
@@ -83,3 +85,6 @@ Etape:
 
 Optional (daca proiectul este clonat cu git pe server si `proc_open` este permis):
 - Butonul “Aplica update (git pull)” face `git pull --ff-only`.
+
+Alternativ (daca git nu este disponibil pe server):
+- Butonul “Aplica update (GitHub zip)” descarca arhiva `main.zip` si aplica update-ul.

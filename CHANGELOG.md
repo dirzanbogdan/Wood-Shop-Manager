@@ -3,10 +3,16 @@
 ## v2.22122025.003
 
 - Install: setări regionale (currency/timezone/language) înainte de SuperAdmin
+- Install: timezone implicit `Europe/Bucharest` + căutare (datalist)
 - Install: checklist live pentru complexitatea parolei
-- Curs valutar: conversie cu curs BNR (EUR/USD) + cache în `settings` (fx_*)
-- Formulare: selectare monedă la câmpurile de sume + salvare automată în lei
-- Fix: eliminat `curl_close()` (deprecated în PHP 8.4)
+- Monedă: curs BNR oficial EUR/USD (`https://www.bnr.ro/nbrfxrates.xml`)
+- Monedă: cache în `settings` (`fx_date`, `fx_eur`, `fx_usd`) + fallback la valorile cache dacă BNR nu răspunde
+- Monedă: conversie la salvare în lei pentru câmpuri de sume (pe baza monedei selectate)
+- UI: select monedă la câmpurile de sume (materiale, produse, setări costuri)
+- Update: backup DB (download `.sql` sau salvare în `storage/backups/`)
+- Update: aplicare update din git (`git pull --ff-only`) când există `.git` și `proc_open` este permis
+- Update: aplicare update din arhivă GitHub (zip) când git nu este disponibil + aplicare update DB
+- Fix: eliminat `curl_close()` (deprecated în PHP 8.4+)
 
 ## v2.22122025.002
 
