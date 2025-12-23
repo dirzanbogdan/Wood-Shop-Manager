@@ -39,7 +39,7 @@ declare(strict_types=1);
           <td><?= htmlspecialchars((string) $p['name'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= htmlspecialchars((string) $p['sku'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= htmlspecialchars((string) ($p['category_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
-          <td><?= number_format((float) $p['sale_price'], 2) ?> lei</td>
+          <td><?= isset($money) ? $money((float) $p['sale_price'], 2) : number_format((float) $p['sale_price'], 2) ?></td>
           <td><?= number_format((float) $p['manpower_hours'], 2) ?> ore</td>
           <td><span class="badge"><?= htmlspecialchars((string) $p['status'], ENT_QUOTES, 'UTF-8') ?></span></td>
           <td><?= (int) $p['stock_qty'] ?></td>

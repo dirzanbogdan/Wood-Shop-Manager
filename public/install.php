@@ -119,13 +119,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dbPass = (string) ($_POST['db_pass'] ?? '');
         $baseUrl = trim((string) ($_POST['base_url'] ?? ''));
 
+        $timezone = trim((string) ($_POST['timezone'] ?? 'Europe/Bucharest'));
         $username = trim((string) ($_POST['superadmin_username'] ?? 'superadmin'));
         $name = trim((string) ($_POST['superadmin_name'] ?? 'SuperAdmin'));
         $password = (string) ($_POST['superadmin_password'] ?? '');
+        $language = trim((string) ($_POST['language'] ?? 'ro'));
+        $currency = trim((string) ($_POST['currency'] ?? 'lei'));
+        if (!in_array($language, ['ro', 'en'], true)) {
+            $language = 'ro';
+        }
+        if (!in_array($currency, ['lei', 'usd', 'eur'], true)) {
+            $currency = 'lei';
+        }
+        if ($timezone === '') {
+            $timezone = 'Europe/Bucharest';
+        }
+        if (!in_array($timezone, timezone_identifiers_list(), true)) {
+            $error = 'Timezone invalid.';
+        }
 
-        if ($dbName === '' || $dbUser === '' || $username === '' || $name === '') {
+        if (!$error && ($dbName === '' || $dbUser === '' || $username === '' || $name === '')) {
             $error = 'Campuri obligatorii lipsa.';
-        } elseif (!passwordComplex($password, 12)) {
+        } elseif (!$error && !passwordComplex($password, 12)) {
             $error = 'Parola trebuie sa fie complexa (minim 12, litere mari/mici, cifra, simbol).';
         } else {
             $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $dbHost, $dbPort, $dbName);
@@ -163,6 +178,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              VALUES (?, ?, ?, 'SuperAdmin', 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())
                              ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role='SuperAdmin', is_active=1, updated_at=UTC_TIMESTAMP()"
                         )->execute([$name, $username, $hash]);
+
+                        $pdo->prepare(
+                            "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)"
+                        )->execute(['language', $language]);
+                        $pdo->prepare(
+                            "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)"
+                        )->execute(['currency', $currency]);
+                        $pdo->prepare(
+                            "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)"
+                        )->execute(['timezone', $timezone]);
 
                         $csrfKey = bin2hex(random_bytes(32));
                         $local = [
@@ -205,12 +230,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 ?><!doctype html>
-<html lang="ro">
+<html lang="<?= h((string) ($_POST['language'] ?? 'ro')) ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Install - GreenSh3ll WSM</title>
   <link rel="stylesheet" href="/assets/app.css">
+  <style>
+    .pw-checklist{margin:8px 0 0 18px;padding:0;font-size:14px;color:var(--muted)}
+    .pw-checklist li{margin:2px 0}
+    .pw-checklist li.ok{color:var(--ok)}
+  </style>
 </head>
 <body>
 <div class="container" style="max-width: 880px">
@@ -258,6 +288,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       </div>
 
+      <h3>Setari regionale</h3>
+      <div class="grid">
+        <div class="col-6">
+          <label>Timezone</label>
+          <?php $tzSel = (string) ($_POST['timezone'] ?? 'Europe/Bucharest'); ?>
+          <input name="timezone" required list="tz_list" value="<?= h($tzSel) ?>">
+          <datalist id="tz_list">
+            <?php foreach (timezone_identifiers_list() as $tz): ?>
+              <option value="<?= h((string) $tz) ?>"></option>
+            <?php endforeach; ?>
+          </datalist>
+        </div>
+        <div class="col-6">
+          <label>Limba</label>
+          <?php $langSel = (string) ($_POST['language'] ?? 'ro'); ?>
+          <select name="language" required>
+            <option value="ro" <?= $langSel === 'ro' ? 'selected' : '' ?>>RO</option>
+            <option value="en" <?= $langSel === 'en' ? 'selected' : '' ?>>EN</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <label>Moneda</label>
+          <?php $curSel = (string) ($_POST['currency'] ?? 'lei'); ?>
+          <select name="currency" required>
+            <option value="lei" <?= $curSel === 'lei' ? 'selected' : '' ?>>Lei</option>
+            <option value="usd" <?= $curSel === 'usd' ? 'selected' : '' ?>>USD</option>
+            <option value="eur" <?= $curSel === 'eur' ? 'selected' : '' ?>>EUR</option>
+          </select>
+        </div>
+      </div>
+
       <h3>SuperAdmin</h3>
       <div class="grid">
         <div class="col-6">
@@ -269,8 +330,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input name="superadmin_username" required value="<?= h((string) ($_POST['superadmin_username'] ?? 'superadmin')) ?>">
         </div>
         <div class="col-12">
-          <label>Parola (min 12 + litere mari/mici + cifra + simbol)</label>
-          <input name="superadmin_password" type="password" required>
+          <label>Parola</label>
+          <input id="superadmin_password" name="superadmin_password" type="password" required>
+          <ul class="pw-checklist" id="pw_checklist">
+            <li data-rule="len">Minim 12 caractere</li>
+            <li data-rule="lower">Litere mici</li>
+            <li data-rule="upper">Litere mari</li>
+            <li data-rule="digit">Cel putin o cifra</li>
+            <li data-rule="special">Cel putin un simbol special (! @ # $ , . etc)</li>
+          </ul>
         </div>
         <div class="col-12 row" style="justify-content:flex-end">
           <button class="btn primary" type="submit">Instaleaza</button>
@@ -280,5 +348,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 </div>
 <script src="/assets/app.js"></script>
+<script>
+(() => {
+  const input = document.getElementById('superadmin_password');
+  const list = document.getElementById('pw_checklist');
+  if (!input || !list) return;
+
+  const rules = {
+    len: v => v.length >= 12,
+    lower: v => /[a-z]/.test(v),
+    upper: v => /[A-Z]/.test(v),
+    digit: v => /\d/.test(v),
+    special: v => /[^a-zA-Z0-9]/.test(v),
+  };
+
+  const items = Array.from(list.querySelectorAll('li[data-rule]'));
+  const update = () => {
+    const v = input.value || '';
+    items.forEach(li => {
+      const k = li.getAttribute('data-rule') || '';
+      const ok = rules[k] ? !!rules[k](v) : false;
+      li.classList.toggle('ok', ok);
+    });
+  };
+
+  input.addEventListener('input', update);
+  update();
+})();
+</script>
 </body>
 </html>

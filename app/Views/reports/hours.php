@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-$qs = http_build_query(['r' => 'reports/hours', 'from' => $from, 'to' => $to, 'export' => 'csv']);
+$qs = http_build_query(['r' => 'reports/hours', 'range' => $range, 'from' => $from, 'to' => $to, 'export' => 'csv']);
 ?>
 <div class="card">
   <div class="row" style="justify-content: space-between">
@@ -10,6 +10,15 @@ $qs = http_build_query(['r' => 'reports/hours', 'from' => $from, 'to' => $to, 'e
     <div class="row">
       <form method="get" action="/" class="row">
         <input type="hidden" name="r" value="reports/hours">
+        <select name="range">
+          <option value="" <?= ($range ?? '') === '' ? 'selected' : '' ?>>Custom</option>
+          <option value="7d" <?= ($range ?? '') === '7d' ? 'selected' : '' ?>>Ultimele 7 zile</option>
+          <option value="30d" <?= ($range ?? '') === '30d' ? 'selected' : '' ?>>Ultimele 30 zile</option>
+          <option value="this_month" <?= ($range ?? '') === 'this_month' ? 'selected' : '' ?>>Luna curenta</option>
+          <option value="last_month" <?= ($range ?? '') === 'last_month' ? 'selected' : '' ?>>Luna trecuta</option>
+          <option value="this_year" <?= ($range ?? '') === 'this_year' ? 'selected' : '' ?>>Anul curent</option>
+          <option value="last_year" <?= ($range ?? '') === 'last_year' ? 'selected' : '' ?>>Anul trecut</option>
+        </select>
         <input type="date" name="from" value="<?= htmlspecialchars((string) $from, ENT_QUOTES, 'UTF-8') ?>">
         <input type="date" name="to" value="<?= htmlspecialchars((string) $to, ENT_QUOTES, 'UTF-8') ?>">
         <button class="btn small" type="submit">Filtreaza</button>
@@ -17,7 +26,7 @@ $qs = http_build_query(['r' => 'reports/hours', 'from' => $from, 'to' => $to, 'e
       <a class="btn small" href="/?<?= htmlspecialchars($qs, ENT_QUOTES, 'UTF-8') ?>">Export CSV</a>
     </div>
   </div>
-  <p class="muted" style="margin-bottom:0">Cost orar operator: <?= number_format((float) $hourly, 2) ?> lei/ora</p>
+  <p class="muted" style="margin-bottom:0">Cost orar operator: <?= isset($money) ? $money((float) $hourly, 2) : number_format((float) $hourly, 2) ?> /ora</p>
 </div>
 
 <div class="card" style="margin-top:12px">
@@ -30,10 +39,9 @@ $qs = http_build_query(['r' => 'reports/hours', 'from' => $from, 'to' => $to, 'e
         <tr>
           <td><?= htmlspecialchars((string) $r['operator_name'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= number_format((float) $r['hours_worked'], 2) ?></td>
-          <td><?= number_format((float) $r['cost'], 2) ?> lei</td>
+          <td><?= isset($money) ? $money((float) $r['cost'], 2) : number_format((float) $r['cost'], 2) ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>
   </table>
 </div>
-

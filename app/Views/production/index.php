@@ -37,8 +37,8 @@ declare(strict_types=1);
           <td><?= htmlspecialchars((string) $o['operator_name'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= htmlspecialchars((string) $o['started_at'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= $o['completed_at'] ? htmlspecialchars((string) $o['completed_at'], ENT_QUOTES, 'UTF-8') : '-' ?></td>
-          <td><?= $o['total_cost'] === null ? '-' : number_format((float) $o['total_cost'], 2) . ' lei' ?></td>
-          <td><?= $o['cost_per_unit'] === null ? '-' : number_format((float) $o['cost_per_unit'], 2) . ' lei' ?></td>
+          <td><?= $o['total_cost'] === null ? '-' : (isset($money) ? $money((float) $o['total_cost'], 2) : number_format((float) $o['total_cost'], 2)) ?></td>
+          <td><?= $o['cost_per_unit'] === null ? '-' : (isset($money) ? $money((float) $o['cost_per_unit'], 2) : number_format((float) $o['cost_per_unit'], 2)) ?></td>
           <td class="row" style="justify-content:flex-end">
             <?php if ((string) $o['status'] === 'Pornita'): ?>
               <form method="post" action="/?r=production/finalize&id=<?= (int) $o['id'] ?>">
@@ -56,4 +56,3 @@ declare(strict_types=1);
     </tbody>
   </table>
 </div>
-

@@ -24,10 +24,9 @@ declare(strict_types=1);
           <td><?= htmlspecialchars((string) ($r['category_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
           <td><span class="badge"><?= htmlspecialchars((string) $r['status'], ENT_QUOTES, 'UTF-8') ?></span></td>
           <td><?= (int) $r['stock_qty'] ?></td>
-          <td><?= number_format((float) $r['sale_price'], 2) ?> lei</td>
+          <td><?= isset($money) ? $money((float) $r['sale_price'], 2) : number_format((float) $r['sale_price'], 2) ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>
   </table>
 </div>
-

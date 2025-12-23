@@ -34,8 +34,8 @@ declare(strict_types=1);
           <td><?= htmlspecialchars((string) ($r['supplier_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= htmlspecialchars((string) $r['unit_code'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= number_format((float) $r['current_qty'], 4) ?></td>
-          <td><?= number_format((float) $r['unit_cost'], 4) ?> lei</td>
-          <td><?= number_format((float) $r['stock_value'], 2) ?> lei</td>
+          <td><?= isset($money) ? $money((float) $r['unit_cost'], 4) : number_format((float) $r['unit_cost'], 4) ?></td>
+          <td><?= isset($money) ? $money((float) $r['stock_value'], 2) : number_format((float) $r['stock_value'], 2) ?></td>
           <td><?= number_format((float) $r['min_stock'], 4) ?></td>
           <td>
             <span class="badge <?= (int) $r['is_critical'] === 1 ? 'danger' : 'ok' ?>">
@@ -47,4 +47,3 @@ declare(strict_types=1);
     </tbody>
   </table>
 </div>
-

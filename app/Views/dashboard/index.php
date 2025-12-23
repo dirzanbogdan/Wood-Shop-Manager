@@ -7,7 +7,7 @@ declare(strict_types=1);
     <div class="card">
       <div class="row" style="justify-content: space-between">
         <h2 style="margin:0">Dashboard</h2>
-        <div class="muted">Ultimele 30 zile energie: <strong><?= number_format((float) ($energy30['kwh'] ?? 0), 2) ?> kWh</strong>, cost <strong><?= number_format((float) ($energy30['cost'] ?? 0), 2) ?> lei</strong></div>
+        <div class="muted">Ultimele 30 zile energie: <strong><?= number_format((float) ($energy30['kwh'] ?? 0), 2) ?> kWh</strong>, cost <strong><?= isset($money) ? $money((float) ($energy30['cost'] ?? 0), 2) : number_format((float) ($energy30['cost'] ?? 0), 2) ?></strong></div>
       </div>
     </div>
   </div>
@@ -79,11 +79,11 @@ declare(strict_types=1);
           <tr>
             <td><?= htmlspecialchars((string) $p['name'], ENT_QUOTES, 'UTF-8') ?></td>
             <td><?= htmlspecialchars((string) $p['sku'], ENT_QUOTES, 'UTF-8') ?></td>
-            <td><?= number_format((float) $p['sale_price'], 2) ?> lei</td>
-            <td><?= number_format((float) $p['avg_cost_per_unit'], 2) ?> lei</td>
+            <td><?= isset($money) ? $money((float) $p['sale_price'], 2) : number_format((float) $p['sale_price'], 2) ?></td>
+            <td><?= isset($money) ? $money((float) $p['avg_cost_per_unit'], 2) : number_format((float) $p['avg_cost_per_unit'], 2) ?></td>
             <td>
               <span class="badge <?= $margin <= 0 ? 'danger' : 'ok' ?>">
-                <?= number_format($margin, 2) ?> lei
+                <?= isset($money) ? $money($margin, 2) : number_format($margin, 2) ?>
               </span>
             </td>
           </tr>
@@ -96,4 +96,3 @@ declare(strict_types=1);
     </div>
   </div>
 </div>
-

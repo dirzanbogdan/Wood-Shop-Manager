@@ -30,6 +30,8 @@ final class SettingsController extends Controller
                 $energy = Validator::requiredDecimal($_POST, 'energy_cost_per_kwh', 0);
                 $hourly = Validator::requiredDecimal($_POST, 'operator_hourly_cost', 0);
                 $timezone = Validator::optionalString($_POST, 'timezone', 64);
+                $language = Validator::optionalString($_POST, 'language', 8);
+                $currency = Validator::optionalString($_POST, 'currency', 8);
                 if ($energy === null || $hourly === null) {
                     Flash::set('error', 'Valori invalide.');
                     $this->redirect('settings/index');
@@ -41,10 +43,30 @@ final class SettingsController extends Controller
                     Flash::set('error', 'Timezone invalid.');
                     $this->redirect('settings/index');
                 }
+                if ($language === null || $language === '' || !in_array($language, ['ro', 'en'], true)) {
+                    $language = 'ro';
+                }
+                if ($currency === null || $currency === '' || !in_array($currency, ['lei', 'usd', 'eur'], true)) {
+                    $currency = 'lei';
+                }
 
-                $this->setSetting('energy_cost_per_kwh', $energy);
-                $this->setSetting('operator_hourly_cost', $hourly);
+                $energyCur = Validator::optionalString($_POST, 'energy_cost_per_kwh_currency', 8);
+                $hourlyCur = Validator::optionalString($_POST, 'operator_hourly_cost_currency', 8);
+                if ($energyCur === null || $energyCur === '' || !in_array($energyCur, ['lei', 'usd', 'eur'], true)) {
+                    $energyCur = $currency;
+                }
+                if ($hourlyCur === null || $hourlyCur === '' || !in_array($hourlyCur, ['lei', 'usd', 'eur'], true)) {
+                    $hourlyCur = $currency;
+                }
+
+                $energyLei = $this->moneyToLei($energy, $energyCur, 4);
+                $hourlyLei = $this->moneyToLei($hourly, $hourlyCur, 4);
+
+                $this->setSetting('energy_cost_per_kwh', $energyLei);
+                $this->setSetting('operator_hourly_cost', $hourlyLei);
                 $this->setSetting('timezone', $timezone);
+                $this->setSetting('language', $language);
+                $this->setSetting('currency', $currency);
 
                 Flash::set('success', 'Setari salvate.');
                 $this->redirect('settings/index');
@@ -120,13 +142,20 @@ final class SettingsController extends Controller
 
         $units = $this->pdo->query("SELECT id, code, name FROM units ORDER BY code ASC")->fetchAll();
 
+        $cur = $this->currentCurrency();
+        $energy = $this->leiToMoney($this->getSetting('energy_cost_per_kwh', '1.00'), $cur, 4);
+        $hourly = $this->leiToMoney($this->getSetting('operator_hourly_cost', '0.00'), $cur, 4);
+
         $this->render('settings/index', [
             'title' => 'Setari',
             'csrf' => CSRF::token($csrfKey),
             'csrf_key' => $csrfKey,
-            'energy_cost_per_kwh' => $this->getSetting('energy_cost_per_kwh', '1.00'),
-            'operator_hourly_cost' => $this->getSetting('operator_hourly_cost', '0.00'),
+            'energy_cost_per_kwh' => $energy,
+            'operator_hourly_cost' => $hourly,
             'timezone' => $this->getSetting('timezone', 'Europe/Bucharest'),
+            'language' => $this->getSetting('language', 'ro'),
+            'currency' => $this->getSetting('currency', 'lei'),
+            'timezones' => timezone_identifiers_list(),
             'units' => $units,
         ]);
     }
@@ -145,4 +174,3 @@ final class SettingsController extends Controller
         $stmt->execute([$key, $value]);
     }
 }
-

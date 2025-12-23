@@ -23,11 +23,11 @@ declare(strict_types=1);
         <tr>
           <td><?= htmlspecialchars((string) $r['name'], ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= htmlspecialchars((string) $r['sku'], ENT_QUOTES, 'UTF-8') ?></td>
-          <td><?= number_format((float) $r['sale_price'], 2) ?> lei</td>
-          <td><?= number_format((float) $r['avg_cost_per_unit'], 2) ?> lei</td>
+          <td><?= isset($money) ? $money((float) $r['sale_price'], 2) : number_format((float) $r['sale_price'], 2) ?></td>
+          <td><?= isset($money) ? $money((float) $r['avg_cost_per_unit'], 2) : number_format((float) $r['avg_cost_per_unit'], 2) ?></td>
           <td>
             <span class="badge <?= $margin <= 0 ? 'danger' : 'ok' ?>">
-              <?= number_format($margin, 2) ?> lei
+              <?= isset($money) ? $money($margin, 2) : number_format($margin, 2) ?>
             </span>
           </td>
         </tr>
@@ -35,4 +35,3 @@ declare(strict_types=1);
     </tbody>
   </table>
 </div>
-

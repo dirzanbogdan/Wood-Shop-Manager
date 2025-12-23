@@ -6,7 +6,7 @@ declare(strict_types=1);
   <div class="row" style="justify-content: space-between">
     <div class="row">
       <h2 style="margin:0">Utilaje</h2>
-      <span class="muted">Cost energie: <strong><?= number_format((float) $energyCost, 2) ?> lei/kWh</strong></span>
+      <span class="muted">Cost energie: <strong><?= isset($money) ? $money((float) $energyCost, 2) : number_format((float) $energyCost, 2) ?>/kWh</strong></span>
     </div>
     <div class="row">
       <a class="btn small" href="/?r=settings/index">Setari</a>
@@ -35,7 +35,7 @@ declare(strict_types=1);
       <tr>
         <td><?= htmlspecialchars((string) $m['name'], ENT_QUOTES, 'UTF-8') ?></td>
         <td><?= number_format($power, 3) ?></td>
-        <td><?= number_format($costPerHour, 2) ?> lei/ora</td>
+        <td><?= isset($money) ? $money($costPerHour, 2) : number_format($costPerHour, 2) ?> /ora</td>
         <td>
           <span class="badge <?= (int) $m['is_active'] === 1 ? 'ok' : 'danger' ?>">
             <?= (int) $m['is_active'] === 1 ? 'Activ' : 'Inactiv' ?>

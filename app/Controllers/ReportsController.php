@@ -95,7 +95,7 @@ final class ReportsController extends Controller
     {
         $this->requireAuth();
 
-        [$from, $to] = $this->dateRange();
+        [$from, $to, $range] = $this->dateRange();
 
         $stmt = $this->pdo->prepare(
             "SELECT m.name AS material_name, mt.name AS type_name, u.code AS unit_code,
@@ -129,6 +129,7 @@ final class ReportsController extends Controller
             'rows' => $rows,
             'from' => $from,
             'to' => $to,
+            'range' => $range,
         ]);
     }
 
@@ -136,7 +137,7 @@ final class ReportsController extends Controller
     {
         $this->requireAuth();
 
-        [$from, $to] = $this->dateRange();
+        [$from, $to, $range] = $this->dateRange();
 
         $stmt = $this->pdo->prepare(
             "SELECT mc.name AS machine_name,
@@ -169,6 +170,7 @@ final class ReportsController extends Controller
             'rows' => $rows,
             'from' => $from,
             'to' => $to,
+            'range' => $range,
         ]);
     }
 
@@ -176,7 +178,7 @@ final class ReportsController extends Controller
     {
         $this->requireAuth();
 
-        [$from, $to] = $this->dateRange();
+        [$from, $to, $range] = $this->dateRange();
 
         $hourly = (float) $this->getSettingDecimal('operator_hourly_cost', '0.00');
 
@@ -210,6 +212,7 @@ final class ReportsController extends Controller
             'rows' => $rows,
             'from' => $from,
             'to' => $to,
+            'range' => $range,
             'hourly' => $hourly,
         ]);
     }
@@ -218,7 +221,7 @@ final class ReportsController extends Controller
     {
         $this->requireAuth();
 
-        [$from, $to] = $this->dateRange();
+        [$from, $to, $range] = $this->dateRange();
 
         $stmt = $this->pdo->prepare(
             "SELECT DATE_FORMAT(po.completed_at, '%Y-%m') AS ym,
@@ -253,6 +256,7 @@ final class ReportsController extends Controller
             'rows' => $rows,
             'from' => $from,
             'to' => $to,
+            'range' => $range,
         ]);
     }
 
@@ -315,16 +319,47 @@ final class ReportsController extends Controller
 
     private function dateRange(): array
     {
+        $range = isset($_GET['range']) && is_string($_GET['range']) ? trim($_GET['range']) : '';
         $from = isset($_GET['from']) && is_string($_GET['from']) ? $_GET['from'] : '';
         $to = isset($_GET['to']) && is_string($_GET['to']) ? $_GET['to'] : '';
+
+        $today = date('Y-m-d');
+        $rangeFromTo = $this->rangeToDates($range, $today);
+        if ($rangeFromTo !== null) {
+            return [$rangeFromTo[0], $rangeFromTo[1], $range];
+        }
 
         $fromV = Validator::requiredDate(['from' => $from], 'from');
         $toV = Validator::requiredDate(['to' => $to], 'to');
         if ($fromV === null || $toV === null) {
-            $toV = gmdate('Y-m-d');
-            $fromV = gmdate('Y-m-d', strtotime('-30 days'));
+            $range = '30d';
+            $rangeFromTo = $this->rangeToDates($range, $today);
+            return [$rangeFromTo[0], $rangeFromTo[1], $range];
         }
-        return [$fromV, $toV];
+        return [$fromV, $toV, ''];
+    }
+
+    private function rangeToDates(string $range, string $today): ?array
+    {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $today)) {
+            $today = date('Y-m-d');
+        }
+
+        return match ($range) {
+            '7d' => [date('Y-m-d', strtotime($today . ' -6 days')), $today],
+            '30d' => [date('Y-m-d', strtotime($today . ' -29 days')), $today],
+            'this_month' => [date('Y-m-01', strtotime($today)), $today],
+            'last_month' => [
+                date('Y-m-01', strtotime(date('Y-m-01', strtotime($today)) . ' -1 month')),
+                date('Y-m-t', strtotime(date('Y-m-01', strtotime($today)) . ' -1 month')),
+            ],
+            'this_year' => [date('Y-01-01', strtotime($today)), $today],
+            'last_year' => [
+                (date('Y', strtotime($today)) - 1) . '-01-01',
+                (date('Y', strtotime($today)) - 1) . '-12-31',
+            ],
+            default => null,
+        };
     }
 
     private function getSettingDecimal(string $key, string $fallback): string
@@ -337,4 +372,3 @@ final class ReportsController extends Controller
         return preg_match('/^-?\d+(\.\d+)?$/', $v) ? $v : $fallback;
     }
 }
-

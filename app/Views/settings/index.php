@@ -26,25 +26,56 @@ declare(strict_types=1);
     <input type="hidden" name="action" value="settings_save">
     <div class="grid">
       <div class="col-6">
-        <label>Cost energie electrica (lei / kWh)</label>
-        <input name="energy_cost_per_kwh" required value="<?= htmlspecialchars((string) $energy_cost_per_kwh, ENT_QUOTES, 'UTF-8') ?>">
+        <label>Cost energie electrica / kWh</label>
+        <?php $energyCurSel = (string) ($currency ?? 'lei'); ?>
+        <div class="row" style="gap:8px">
+          <input name="energy_cost_per_kwh" required value="<?= htmlspecialchars((string) $energy_cost_per_kwh, ENT_QUOTES, 'UTF-8') ?>" style="flex:1">
+          <select name="energy_cost_per_kwh_currency" style="width:110px">
+            <option value="lei" <?= $energyCurSel === 'lei' ? 'selected' : '' ?>>LEI</option>
+            <option value="usd" <?= $energyCurSel === 'usd' ? 'selected' : '' ?>>USD</option>
+            <option value="eur" <?= $energyCurSel === 'eur' ? 'selected' : '' ?>>EUR</option>
+          </select>
+        </div>
       </div>
       <div class="col-6">
-        <label>Cost orar operator (lei / ora)</label>
-        <input name="operator_hourly_cost" required value="<?= htmlspecialchars((string) $operator_hourly_cost, ENT_QUOTES, 'UTF-8') ?>">
+        <label>Cost orar operator / ora</label>
+        <?php $hourlyCurSel = (string) ($currency ?? 'lei'); ?>
+        <div class="row" style="gap:8px">
+          <input name="operator_hourly_cost" required value="<?= htmlspecialchars((string) $operator_hourly_cost, ENT_QUOTES, 'UTF-8') ?>" style="flex:1">
+          <select name="operator_hourly_cost_currency" style="width:110px">
+            <option value="lei" <?= $hourlyCurSel === 'lei' ? 'selected' : '' ?>>LEI</option>
+            <option value="usd" <?= $hourlyCurSel === 'usd' ? 'selected' : '' ?>>USD</option>
+            <option value="eur" <?= $hourlyCurSel === 'eur' ? 'selected' : '' ?>>EUR</option>
+          </select>
+        </div>
       </div>
       <div class="col-6">
         <label>Timezone</label>
-        <select name="timezone" required>
           <?php
-            $tzList = ['Europe/Bucharest', 'UTC', 'Europe/London', 'Europe/Berlin', 'America/New_York'];
             $tzCurrent = (string) ($timezone ?? 'Europe/Bucharest');
           ?>
-          <?php foreach ($tzList as $tz): ?>
-            <option value="<?= htmlspecialchars($tz, ENT_QUOTES, 'UTF-8') ?>" <?= $tzCurrent === $tz ? 'selected' : '' ?>>
-              <?= htmlspecialchars($tz, ENT_QUOTES, 'UTF-8') ?>
-            </option>
+        <input name="timezone" required list="tz_list" value="<?= htmlspecialchars($tzCurrent, ENT_QUOTES, 'UTF-8') ?>">
+        <datalist id="tz_list">
+          <?php foreach (($timezones ?? []) as $tz): ?>
+            <option value="<?= htmlspecialchars((string) $tz, ENT_QUOTES, 'UTF-8') ?>"></option>
           <?php endforeach; ?>
+        </datalist>
+      </div>
+      <div class="col-6">
+        <label>Limba</label>
+        <?php $langCurrent = (string) ($language ?? 'ro'); ?>
+        <select name="language" required>
+          <option value="ro" <?= $langCurrent === 'ro' ? 'selected' : '' ?>>RO</option>
+          <option value="en" <?= $langCurrent === 'en' ? 'selected' : '' ?>>EN</option>
+        </select>
+      </div>
+      <div class="col-6">
+        <label>Moneda</label>
+        <?php $curCurrent = (string) ($currency ?? 'lei'); ?>
+        <select name="currency" required>
+          <option value="lei" <?= $curCurrent === 'lei' ? 'selected' : '' ?>>Lei</option>
+          <option value="usd" <?= $curCurrent === 'usd' ? 'selected' : '' ?>>USD</option>
+          <option value="eur" <?= $curCurrent === 'eur' ? 'selected' : '' ?>>EUR</option>
         </select>
       </div>
       <div class="col-12 row" style="justify-content:flex-end">

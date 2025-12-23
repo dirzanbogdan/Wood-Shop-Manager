@@ -77,6 +77,14 @@ $canShell = $gitAvailable && (($git_info['can_shell'] ?? false) === true);
           </form>
         <?php endif; ?>
       </div>
+
+      <div style="margin-top: 10px">
+        <form method="post" style="display:flex; gap:10px; flex-wrap:wrap">
+          <input type="hidden" name="<?= $esc((string) ($csrf_key ?? 'csrf_token')) ?>" value="<?= $esc((string) ($csrf ?? '')) ?>">
+          <input type="hidden" name="action" value="apply_update">
+          <button class="btn danger" type="submit" onclick="return confirm('Aplici update din arhiva GitHub peste fisierele curente?');">Aplica update (arhiva GitHub)</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>

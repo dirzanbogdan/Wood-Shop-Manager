@@ -49,7 +49,7 @@ declare(strict_types=1);
             <?= number_format((float) $m['current_qty'], 4) ?> <?= htmlspecialchars((string) $m['unit_code'], ENT_QUOTES, 'UTF-8') ?>
           </span>
         </td>
-        <td><?= number_format((float) $m['unit_cost'], 4) ?> lei</td>
+        <td><?= isset($money) ? $money((float) $m['unit_cost'], 4) : number_format((float) $m['unit_cost'], 4) ?></td>
         <td><?= number_format((float) $m['min_stock'], 4) ?> <?= htmlspecialchars((string) $m['unit_code'], ENT_QUOTES, 'UTF-8') ?></td>
         <td class="row" style="justify-content: flex-end">
           <a class="btn small" href="/?r=materials/movements&id=<?= (int) $m['id'] ?>">Istoric</a>
@@ -60,4 +60,3 @@ declare(strict_types=1);
     </tbody>
   </table>
 </div>
-

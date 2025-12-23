@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.22122025.003
+
+- Install: setări regionale (currency/timezone/language) înainte de SuperAdmin
+- Install: checklist live pentru complexitatea parolei
+- Curs valutar: conversie cu curs BNR (EUR/USD) + cache în `settings` (fx_*)
+- Formulare: selectare monedă la câmpurile de sume + salvare automată în lei
+- Fix: eliminat `curl_close()` (deprecated în PHP 8.4)
+
 ## v2.22122025.002
 
 - Update: afișare changelog în pagina Update (dropdown per versiune)

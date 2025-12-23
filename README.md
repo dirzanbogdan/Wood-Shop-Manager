@@ -1,6 +1,6 @@
 # GreenSh3ll Wood Shop Manager
 
-Versiune: afișată în footer (ex: `v2.22122025.001`)
+Versiune: afișată în footer (ex: `v2.22122025.003`)
 
 Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
 - `major`: versiunea majoră (configurabilă în `config/config.php`)
@@ -50,9 +50,12 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
   - cost producție lunar (interval)
   - profit estimat pe produs (pe baza costului mediu/unit)
 - Setări:
-  - cost energie (lei/kWh), cost orar operator (lei/oră)
+  - cost energie, cost orar operator (stocate în lei; introducere cu monedă selectabilă)
   - administrare unități de măsură (adăugare/editare)
   - nomenclatoare: furnizori, tipuri materiale, categorii produse
+- Monedă:
+  - curs BNR pentru EUR/USD (afișare și conversie la salvare)
+  - selectare monedă în formulare pentru sume (ex: prețuri în USD/EUR)
 - Update (SuperAdmin):
   - backup DB (download pe PC sau salvare pe server)
   - listă modificări incluse
@@ -61,7 +64,7 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
 ## Instalare
 
 1. Urca proiectul pe hosting.
-2. Acceseaza `https://domeniul-tau/install.php` si completeaza conexiunea DB + utilizatorul `SuperAdmin`.
+2. Acceseaza `https://domeniul-tau/install.php` si completeaza conexiunea DB + setari regionale + utilizatorul `SuperAdmin`.
 3. Login: `/?r=auth/login`
 
 Configuratia locala se salveaza in `config/local.php` (nu intra in Git).

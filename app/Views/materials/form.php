@@ -67,8 +67,20 @@ $action = $isEdit ? '/?r=materials/edit&id=' . (int) $material['id'] : '/?r=mate
       <?php endif; ?>
 
       <div class="col-6">
-        <label>Cost unitar (lei)</label>
-        <input name="unit_cost" required value="<?= htmlspecialchars((string) ($material['unit_cost'] ?? '0'), ENT_QUOTES, 'UTF-8') ?>">
+        <label>Cost unitar</label>
+        <?php
+          $ucLei = (string) ($material['unit_cost'] ?? '0');
+          $ucVal = isset($to_currency) ? number_format((float) $to_currency((float) $ucLei), 4, '.', '') : $ucLei;
+          $ucCurSel = (string) ($currency ?? 'lei');
+        ?>
+        <div class="row" style="gap:8px">
+          <input name="unit_cost" required value="<?= htmlspecialchars($ucVal, ENT_QUOTES, 'UTF-8') ?>" style="flex:1">
+          <select name="unit_cost_currency" style="width:110px">
+            <option value="lei" <?= $ucCurSel === 'lei' ? 'selected' : '' ?>>LEI</option>
+            <option value="usd" <?= $ucCurSel === 'usd' ? 'selected' : '' ?>>USD</option>
+            <option value="eur" <?= $ucCurSel === 'eur' ? 'selected' : '' ?>>EUR</option>
+          </select>
+        </div>
       </div>
 
       <div class="col-6">

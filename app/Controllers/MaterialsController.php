@@ -66,6 +66,7 @@ final class MaterialsController extends Controller
             $supplierId = Validator::optionalInt($_POST, 'supplier_id', 1);
             $currentQty = Validator::requiredDecimal($_POST, 'current_qty', 0);
             $unitCost = Validator::requiredDecimal($_POST, 'unit_cost', 0);
+            $unitCostCurrency = Validator::optionalString($_POST, 'unit_cost_currency', 8);
             $minStock = Validator::requiredDecimal($_POST, 'min_stock', 0);
             $purchaseDate = Validator::optionalString($_POST, 'purchase_date', 10);
             if ($purchaseDate !== null) {
@@ -77,6 +78,11 @@ final class MaterialsController extends Controller
                 Flash::set('error', 'Campuri invalide.');
                 $this->redirect('materials/create');
             }
+
+            if ($unitCostCurrency === null || $unitCostCurrency === '' || !in_array($unitCostCurrency, ['lei', 'usd', 'eur'], true)) {
+                $unitCostCurrency = null;
+            }
+            $unitCost = $this->moneyToLei($unitCost, $unitCostCurrency, 4);
 
             $this->pdo->beginTransaction();
             try {
@@ -154,6 +160,7 @@ final class MaterialsController extends Controller
             $unitId = Validator::requiredInt($_POST, 'unit_id', 1);
             $supplierId = Validator::optionalInt($_POST, 'supplier_id', 1);
             $unitCost = Validator::requiredDecimal($_POST, 'unit_cost', 0);
+            $unitCostCurrency = Validator::optionalString($_POST, 'unit_cost_currency', 8);
             $minStock = Validator::requiredDecimal($_POST, 'min_stock', 0);
             $purchaseDate = Validator::optionalString($_POST, 'purchase_date', 10);
             if ($purchaseDate !== null) {
@@ -165,6 +172,11 @@ final class MaterialsController extends Controller
                 Flash::set('error', 'Campuri invalide.');
                 $this->redirect('materials/edit', ['id' => $id]);
             }
+
+            if ($unitCostCurrency === null || $unitCostCurrency === '' || !in_array($unitCostCurrency, ['lei', 'usd', 'eur'], true)) {
+                $unitCostCurrency = null;
+            }
+            $unitCost = $this->moneyToLei($unitCost, $unitCostCurrency, 4);
 
             $stmt = $this->pdo->prepare(
                 "UPDATE materials
@@ -286,6 +298,7 @@ final class MaterialsController extends Controller
 
         $qty = Validator::requiredDecimal($_POST, 'qty', 0.0001);
         $unitCost = Validator::optionalString($_POST, 'unit_cost', 30);
+        $unitCostCurrency = Validator::optionalString($_POST, 'unit_cost_currency', 8);
         $note = Validator::optionalString($_POST, 'note', 1000);
         if ($qty === null) {
             Flash::set('error', 'Cantitate invalida.');
@@ -321,7 +334,10 @@ final class MaterialsController extends Controller
             if (is_string($unitCost)) {
                 $unitCost = str_replace(',', '.', trim($unitCost));
                 if ($unitCost !== '' && preg_match('/^-?\d+(\.\d+)?$/', $unitCost)) {
-                    $uc = $unitCost;
+                    if ($unitCostCurrency === null || $unitCostCurrency === '' || !in_array($unitCostCurrency, ['lei', 'usd', 'eur'], true)) {
+                        $unitCostCurrency = null;
+                    }
+                    $uc = $this->moneyToLei($unitCost, $unitCostCurrency, 4);
                 }
             }
 

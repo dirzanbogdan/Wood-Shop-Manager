@@ -40,8 +40,20 @@ $action = $isEdit ? '/?r=products/edit&id=' . (int) $product['id'] : '/?r=produc
         </select>
       </div>
       <div class="col-6">
-        <label>Pret de vanzare (lei)</label>
-        <input name="sale_price" required value="<?= htmlspecialchars((string) ($product['sale_price'] ?? '0'), ENT_QUOTES, 'UTF-8') ?>">
+        <label>Pret de vanzare</label>
+        <?php
+          $spLei = (string) ($product['sale_price'] ?? '0');
+          $spVal = isset($to_currency) ? number_format((float) $to_currency((float) $spLei), 4, '.', '') : $spLei;
+          $spCurSel = (string) ($currency ?? 'lei');
+        ?>
+        <div class="row" style="gap:8px">
+          <input name="sale_price" required value="<?= htmlspecialchars($spVal, ENT_QUOTES, 'UTF-8') ?>" style="flex:1">
+          <select name="sale_price_currency" style="width:110px">
+            <option value="lei" <?= $spCurSel === 'lei' ? 'selected' : '' ?>>LEI</option>
+            <option value="usd" <?= $spCurSel === 'usd' ? 'selected' : '' ?>>USD</option>
+            <option value="eur" <?= $spCurSel === 'eur' ? 'selected' : '' ?>>EUR</option>
+          </select>
+        </div>
       </div>
       <div class="col-6">
         <label>Timp estimat productie (ore)</label>
@@ -73,4 +85,3 @@ $action = $isEdit ? '/?r=products/edit&id=' . (int) $product['id'] : '/?r=produc
     </div>
   </form>
 </div>
-

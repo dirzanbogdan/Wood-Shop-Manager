@@ -31,7 +31,15 @@ declare(strict_types=1);
       </div>
       <div class="col-6">
         <label>Cost unitar (optional)</label>
-        <input name="unit_cost">
+        <?php $ucCurSel = (string) ($currency ?? 'lei'); ?>
+        <div class="row" style="gap:8px">
+          <input name="unit_cost" style="flex:1">
+          <select name="unit_cost_currency" style="width:110px">
+            <option value="lei" <?= $ucCurSel === 'lei' ? 'selected' : '' ?>>LEI</option>
+            <option value="usd" <?= $ucCurSel === 'usd' ? 'selected' : '' ?>>USD</option>
+            <option value="eur" <?= $ucCurSel === 'eur' ? 'selected' : '' ?>>EUR</option>
+          </select>
+        </div>
       </div>
       <div class="col-6">
         <label>Nota (optional)</label>
@@ -65,4 +73,3 @@ declare(strict_types=1);
     </tbody>
   </table>
 </div>
-

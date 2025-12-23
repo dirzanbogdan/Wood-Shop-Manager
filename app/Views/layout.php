@@ -9,7 +9,7 @@ $route = isset($_GET['r']) && is_string($_GET['r']) ? (string) $_GET['r'] : '';
 $section = explode('/', $route, 2)[0] ?? '';
 ?>
 <!doctype html>
-<html lang="ro">
+<html lang="<?= htmlspecialchars((string) ($lang ?? 'ro'), ENT_QUOTES, 'UTF-8') ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">

@@ -57,6 +57,7 @@ final class ProductsController extends Controller
             $sku = Validator::requiredString($_POST, 'sku', 1, 60);
             $categoryId = Validator::requiredInt($_POST, 'category_id', 1);
             $salePrice = Validator::requiredDecimal($_POST, 'sale_price', 0);
+            $salePriceCurrency = Validator::optionalString($_POST, 'sale_price_currency', 8);
             $estimated = Validator::requiredDecimal($_POST, 'estimated_hours', 0);
             $manpower = Validator::requiredDecimal($_POST, 'manpower_hours', 0);
 
@@ -64,6 +65,11 @@ final class ProductsController extends Controller
                 Flash::set('error', 'Campuri invalide.');
                 $this->redirect('products/create');
             }
+
+            if ($salePriceCurrency === null || $salePriceCurrency === '' || !in_array($salePriceCurrency, ['lei', 'usd', 'eur'], true)) {
+                $salePriceCurrency = null;
+            }
+            $salePrice = $this->moneyToLei($salePrice, $salePriceCurrency, 4);
 
             try {
                 $stmt = $this->pdo->prepare(
@@ -119,6 +125,7 @@ final class ProductsController extends Controller
             $sku = Validator::requiredString($_POST, 'sku', 1, 60);
             $categoryId = Validator::requiredInt($_POST, 'category_id', 1);
             $salePrice = Validator::requiredDecimal($_POST, 'sale_price', 0);
+            $salePriceCurrency = Validator::optionalString($_POST, 'sale_price_currency', 8);
             $estimated = Validator::requiredDecimal($_POST, 'estimated_hours', 0);
             $manpower = Validator::requiredDecimal($_POST, 'manpower_hours', 0);
             $status = Validator::requiredString($_POST, 'status', 1, 20);
@@ -131,6 +138,11 @@ final class ProductsController extends Controller
                 Flash::set('error', 'Status invalid.');
                 $this->redirect('products/edit', ['id' => $id]);
             }
+
+            if ($salePriceCurrency === null || $salePriceCurrency === '' || !in_array($salePriceCurrency, ['lei', 'usd', 'eur'], true)) {
+                $salePriceCurrency = null;
+            }
+            $salePrice = $this->moneyToLei($salePrice, $salePriceCurrency, 4);
 
             try {
                 $upd = $this->pdo->prepare(
@@ -174,6 +186,7 @@ final class ProductsController extends Controller
             $productId = Validator::requiredInt($_POST, 'product_id', 1);
             $qty = Validator::requiredInt($_POST, 'qty', 1, 1000000);
             $salePrice = Validator::requiredDecimal($_POST, 'sale_price', 0);
+            $salePriceCurrency = Validator::optionalString($_POST, 'sale_price_currency', 8);
             $customer = Validator::optionalString($_POST, 'customer_name', 160);
             $channel = Validator::optionalString($_POST, 'channel', 80);
 
@@ -181,6 +194,11 @@ final class ProductsController extends Controller
                 Flash::set('error', 'Campuri invalide.');
                 $this->redirect('products/sell');
             }
+
+            if ($salePriceCurrency === null || $salePriceCurrency === '' || !in_array($salePriceCurrency, ['lei', 'usd', 'eur'], true)) {
+                $salePriceCurrency = null;
+            }
+            $salePrice = $this->moneyToLei($salePrice, $salePriceCurrency, 4);
 
             $this->pdo->beginTransaction();
             try {

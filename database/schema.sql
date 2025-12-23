@@ -254,7 +254,9 @@ CREATE TABLE IF NOT EXISTS sales (
 INSERT IGNORE INTO settings (`key`, `value`) VALUES
   ('energy_cost_per_kwh', '1.00'),
   ('operator_hourly_cost', '0.00'),
-  ('timezone', 'Europe/Bucharest');
+  ('timezone', 'Europe/Bucharest'),
+  ('language', 'ro'),
+  ('currency', 'lei');
 
 INSERT IGNORE INTO units (id, code, name, created_at, updated_at) VALUES
   (1, 'buc', 'Bucata', UTC_TIMESTAMP(), UTC_TIMESTAMP()),
