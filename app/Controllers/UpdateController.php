@@ -232,7 +232,13 @@ final class UpdateController extends Controller
         $err = trim((string) $stderr);
         $msg = $out !== '' ? $out : ($err !== '' ? $err : 'Fara output.');
 
-        return ['ok' => $code === 0, 'message' => $msg];
+        $isOkByOutput = false;
+        $combined = trim($out . "\n" . $err);
+        if ($combined !== '') {
+            $isOkByOutput = (bool) preg_match('/\b(Already up[ -]to[ -]date\.|Fast-forward|Updating\s+[0-9a-f]{7,40}\.\.[0-9a-f]{7,40})\b/i', $combined);
+        }
+
+        return ['ok' => $code === 0 || $isOkByOutput, 'message' => $msg];
     }
 
     private function runZipUpdate(): array
