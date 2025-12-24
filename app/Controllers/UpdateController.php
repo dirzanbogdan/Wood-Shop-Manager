@@ -307,7 +307,8 @@ final class UpdateController extends Controller
             $code = (string) ($res['code'] ?? '');
             $out = (string) ($res['out'] ?? '');
             $err = (string) ($res['err'] ?? '');
-            $logs[] = '[' . $label . '] exit=' . $code
+            $logs[] = '=== ' . $label . ' ==='
+                . "\nexit=" . $code
                 . "\nOUT:\n" . ($out !== '' ? $out : '-')
                 . "\nERR:\n" . ($err !== '' ? $err : '-');
             return $res;
@@ -333,7 +334,8 @@ final class UpdateController extends Controller
             $isOkByOutput = (bool) preg_match('/\b(Already up[ -]to[ -]date\.|Fast-forward|Updating\s+[0-9a-f]{7,40}\.\.[0-9a-f]{7,40})\b/i', $combined);
         }
 
-        $ok = (($pull['code'] ?? 1) === 0) || $isOkByOutput;
+        $hasHardFailure = $combined !== '' && (bool) preg_match('/\b(fatal:|Aborting|Permission denied|Cannot update the ref)\b/i', $combined);
+        $ok = ((($pull['code'] ?? 1) === 0) || $isOkByOutput) && !$hasHardFailure;
         if (!$ok && preg_match('/dubious ownership|safe\.directory/i', $combined)) {
             $run(['config', '--global', '--add', 'safe.directory', $root], 'git config --global --add safe.directory');
             $pull2 = $run(['pull', '--ff-only'], 'git pull --ff-only (after safe.directory)');
@@ -345,7 +347,28 @@ final class UpdateController extends Controller
                 $msg = 'Fara output.';
             }
             $isOkByOutput = $combined !== '' && (bool) preg_match('/\b(Already up[ -]to[ -]date\.|Fast-forward|Updating\s+[0-9a-f]{7,40}\.\.[0-9a-f]{7,40})\b/i', $combined);
-            $ok = (($pull2['code'] ?? 1) === 0) || $isOkByOutput;
+            $hasHardFailure = $combined !== '' && (bool) preg_match('/\b(fatal:|Aborting|Permission denied|Cannot update the ref)\b/i', $combined);
+            $ok = ((($pull2['code'] ?? 1) === 0) || $isOkByOutput) && !$hasHardFailure;
+        }
+
+        if (
+            !$ok
+            && preg_match('/Unable to append to \.git\/logs|Cannot update the ref|Permission denied/i', $combined)
+        ) {
+            $cfg = $run(['config', '--local', 'core.logAllRefUpdates', 'false'], 'git config --local core.logAllRefUpdates false');
+            if (($cfg['code'] ?? 1) === 0) {
+                $pullFix = $run(['pull', '--ff-only'], 'git pull --ff-only (after reflog off)');
+                $out = (string) ($pullFix['out'] ?? '');
+                $err = (string) ($pullFix['err'] ?? '');
+                $combined = trim($out . "\n" . $err);
+                $msg = trim($out !== '' ? $out : $err);
+                if ($msg === '') {
+                    $msg = 'Fara output.';
+                }
+                $isOkByOutput = $combined !== '' && (bool) preg_match('/\b(Already up[ -]to[ -]date\.|Fast-forward|Updating\s+[0-9a-f]{7,40}\.\.[0-9a-f]{7,40})\b/i', $combined);
+                $hasHardFailure = $combined !== '' && (bool) preg_match('/\b(fatal:|Aborting|Permission denied|Cannot update the ref)\b/i', $combined);
+                $ok = ((($pullFix['code'] ?? 1) === 0) || $isOkByOutput) && !$hasHardFailure;
+            }
         }
 
         if (
@@ -404,6 +427,10 @@ final class UpdateController extends Controller
 
         if ($logs) {
             $msg = trim($msg . "\n\n---\nLOGS:\n" . implode("\n\n", $logs));
+        }
+
+        if (!$ok && preg_match('/Unable to append to \.git\/logs|Cannot update the ref|Permission denied/i', $combined)) {
+            $msg = trim($msg . "\n\nSugestie: userul PHP nu are permisiuni de scriere in folderul `.git` (in special `.git/logs` si `.git/refs`). Ruleaza update din arhiva GitHub (zip) sau acorda permisiuni corecte pentru userul web.");
         }
 
         return ['ok' => $ok, 'message' => $msg];

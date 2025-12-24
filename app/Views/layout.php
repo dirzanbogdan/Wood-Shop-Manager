@@ -58,12 +58,12 @@ $section = explode('/', $route, 2)[0] ?? '';
     <?php if (isset($flash) && is_array($flash)): ?>
       <?php if (isset($flash['error']) && $flash['error'] !== ''): ?>
         <div class="card" style="border-color: rgba(220,38,38,.4)">
-          <div class="error"><?= htmlspecialchars((string) $flash['error'], ENT_QUOTES, 'UTF-8') ?></div>
+          <pre class="error" style="margin:0; white-space: pre-wrap"><?= htmlspecialchars((string) $flash['error'], ENT_QUOTES, 'UTF-8') ?></pre>
         </div>
       <?php endif; ?>
       <?php if (isset($flash['success']) && $flash['success'] !== ''): ?>
         <div class="card" style="border-color: rgba(22,163,74,.4)">
-          <div style="color: var(--ok)"><?= htmlspecialchars((string) $flash['success'], ENT_QUOTES, 'UTF-8') ?></div>
+          <pre style="margin:0; white-space: pre-wrap; color: var(--ok)"><?= htmlspecialchars((string) $flash['success'], ENT_QUOTES, 'UTF-8') ?></pre>
         </div>
       <?php endif; ?>
     <?php endif; ?>
