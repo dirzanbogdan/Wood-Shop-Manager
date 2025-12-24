@@ -301,13 +301,25 @@ final class UpdateController extends Controller
         }
         $env = $this->gitEnv($root);
 
-        $beforeHead = $this->runGit(['rev-parse', '--short', 'HEAD'], $root, $env);
+        $logs = [];
+        $run = function (array $args, string $label) use ($root, $env, &$logs): array {
+            $res = $this->runGit($args, $root, $env);
+            $code = (string) ($res['code'] ?? '');
+            $out = (string) ($res['out'] ?? '');
+            $err = (string) ($res['err'] ?? '');
+            $logs[] = '[' . $label . '] exit=' . $code
+                . "\nOUT:\n" . ($out !== '' ? $out : '-')
+                . "\nERR:\n" . ($err !== '' ? $err : '-');
+            return $res;
+        };
+
+        $beforeHead = $run(['rev-parse', '--short', 'HEAD'], 'git rev-parse --short HEAD (before)');
         $beforeHeadShort = '';
         if (preg_match('/^[0-9a-f]{7,40}$/i', (string) ($beforeHead['out'] ?? ''))) {
             $beforeHeadShort = substr((string) $beforeHead['out'], 0, 7);
         }
 
-        $pull = $this->runGit(['pull', '--ff-only'], $root, $env);
+        $pull = $run(['pull', '--ff-only'], 'git pull --ff-only');
         $out = (string) ($pull['out'] ?? '');
         $err = (string) ($pull['err'] ?? '');
         $msg = trim($out !== '' ? $out : $err);
@@ -323,8 +335,8 @@ final class UpdateController extends Controller
 
         $ok = (($pull['code'] ?? 1) === 0) || $isOkByOutput;
         if (!$ok && preg_match('/dubious ownership|safe\.directory/i', $combined)) {
-            $this->runGit(['config', '--global', '--add', 'safe.directory', $root], $root, $env);
-            $pull2 = $this->runGit(['pull', '--ff-only'], $root, $env);
+            $run(['config', '--global', '--add', 'safe.directory', $root], 'git config --global --add safe.directory');
+            $pull2 = $run(['pull', '--ff-only'], 'git pull --ff-only (after safe.directory)');
             $out = (string) ($pull2['out'] ?? '');
             $err = (string) ($pull2['err'] ?? '');
             $combined = trim($out . "\n" . $err);
@@ -340,8 +352,8 @@ final class UpdateController extends Controller
             !$ok
             && preg_match('/Your local changes to the following files would be overwritten by merge/i', $combined)
         ) {
-            $reset = $this->runGit(['reset', '--hard', 'HEAD'], $root, $env);
-            $pull3 = $this->runGit(['pull', '--ff-only'], $root, $env);
+            $reset = $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (auto)');
+            $pull3 = $run(['pull', '--ff-only'], 'git pull --ff-only (after reset --hard)');
             $out = (string) ($pull3['out'] ?? '');
             $err = (string) ($pull3['err'] ?? '');
             $combined = trim($out . "\n" . $err);
@@ -367,7 +379,7 @@ final class UpdateController extends Controller
                 @opcache_reset();
             }
 
-            $head = $this->runGit(['rev-parse', '--short', 'HEAD'], $root, $env);
+            $head = $run(['rev-parse', '--short', 'HEAD'], 'git rev-parse --short HEAD (after)');
             $headOut = (string) ($head['out'] ?? '');
             if (preg_match('/^[0-9a-f]{7,40}$/i', $headOut)) {
                 $afterHeadShort = substr($headOut, 0, 7);
@@ -378,11 +390,20 @@ final class UpdateController extends Controller
                 }
             }
 
-            $status = $this->runGit(['status', '--porcelain'], $root, $env);
+            $status = $run(['status', '--porcelain'], 'git status --porcelain');
             $porcelain = trim((string) ($status['out'] ?? ''));
             if ($porcelain !== '') {
-                $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain);
+                $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (cleanup)');
+                $status2 = $run(['status', '--porcelain'], 'git status --porcelain (after cleanup)');
+                $porcelain2 = trim((string) ($status2['out'] ?? ''));
+                if ($porcelain2 !== '') {
+                    $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain2);
+                }
             }
+        }
+
+        if ($logs) {
+            $msg = trim($msg . "\n\n---\nLOGS:\n" . implode("\n\n", $logs));
         }
 
         return ['ok' => $ok, 'message' => $msg];
