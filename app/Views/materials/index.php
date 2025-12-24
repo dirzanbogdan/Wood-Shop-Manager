@@ -52,6 +52,20 @@ declare(strict_types=1);
         <td><?= isset($money) ? $money((float) $m['unit_cost'], 4) : number_format((float) $m['unit_cost'], 4) ?></td>
         <td><?= number_format((float) $m['min_stock'], 4) ?> <?= htmlspecialchars((string) $m['unit_code'], ENT_QUOTES, 'UTF-8') ?></td>
         <td class="row" style="justify-content: flex-end">
+          <?php if (isset($m['purchase_url']) && is_string($m['purchase_url']) && trim($m['purchase_url']) !== ''): ?>
+            <a
+              class="btn small"
+              href="<?= htmlspecialchars((string) $m['purchase_url'], ENT_QUOTES, 'UTF-8') ?>"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Go to URL"
+              aria-label="Go to URL"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block">
+                <path fill="currentColor" d="M10.59 13.41a1.996 1.996 0 0 1 0-2.82l2.82-2.82a2 2 0 0 1 2.83 2.82l-.88.88a1 1 0 1 0 1.41 1.41l.88-.88a4 4 0 0 0-5.66-5.66l-2.82 2.82a4 4 0 0 0 0 5.66 1 1 0 1 0 1.41-1.41Zm2.82-2.82a1.996 1.996 0 0 1 0 2.82l-2.82 2.82a2 2 0 1 1-2.83-2.82l.88-.88a1 1 0 0 0-1.41-1.41l-.88.88a4 4 0 1 0 5.66 5.66l2.82-2.82a4 4 0 0 0 0-5.66 1 1 0 1 0-1.41 1.41Z"/>
+              </svg>
+            </a>
+          <?php endif; ?>
           <a class="btn small" href="/?r=materials/movements&id=<?= (int) $m['id'] ?>">Istoric</a>
           <a class="btn small" href="/?r=materials/edit&id=<?= (int) $m['id'] ?>">Editeaza</a>
         </td>

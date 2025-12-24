@@ -23,6 +23,7 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
   - produse cu marjă mică (estimativ)
 - Materie primă:
   - CRUD materiale, arhivare
+  - cod produs (opțional)
   - stoc curent, cost unitar, stoc minim
   - data achiziției + URL achiziție
   - istoric mișcări (intrare/ieșire/ajustare)

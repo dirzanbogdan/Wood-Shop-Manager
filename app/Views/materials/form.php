@@ -26,6 +26,10 @@ $action = $isEdit ? '/?r=materials/edit&id=' . (int) $material['id'] : '/?r=mate
         <input name="name" required value="<?= htmlspecialchars((string) ($material['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
       </div>
       <div class="col-6">
+        <label>Cod produs</label>
+        <input name="product_code" value="<?= htmlspecialchars((string) ($material['product_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+      </div>
+      <div class="col-6">
         <label>Tip material</label>
         <select name="material_type_id" required>
           <?php foreach ($types as $t): ?>

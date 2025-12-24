@@ -4,6 +4,8 @@
 
 - Input: acceptă valori zecimale de forma `.23` și normalizează la `0.23` (Excel-like)
 - Input: normalizează și formele `-.23` → `-0.23`, `+.23` → `0.23`
+- Materie primă: câmp nou „Cod produs” în formular
+- Materie primă: buton icon pentru deschiderea „URL achizitie” din listă
 
 ## v2.22122025.003
 

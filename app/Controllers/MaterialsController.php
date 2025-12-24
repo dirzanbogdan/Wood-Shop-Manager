@@ -12,6 +12,30 @@ use App\Core\Validator;
 
 final class MaterialsController extends Controller
 {
+    private function hasColumn(string $table, string $column): bool
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) AS c
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
+        );
+        $stmt->execute([$table, $column]);
+        return (int) (($stmt->fetch()['c'] ?? 0)) > 0;
+    }
+
+    private function ensureMaterialsProductCodeColumn(): bool
+    {
+        if ($this->hasColumn('materials', 'product_code')) {
+            return true;
+        }
+        try {
+            $this->pdo->exec("ALTER TABLE materials ADD COLUMN product_code VARCHAR(80) NULL AFTER name");
+        } catch (\Throwable $e) {
+            return false;
+        }
+        return $this->hasColumn('materials', 'product_code');
+    }
+
     public function index(): void
     {
         $this->requireAuth();
@@ -21,7 +45,7 @@ final class MaterialsController extends Controller
 
         $sql =
             "SELECT m.id, m.name, mt.name AS type_name, u.code AS unit_code, s.name AS supplier_name,
-                    m.current_qty, m.unit_cost, m.min_stock, m.is_archived
+                    m.current_qty, m.unit_cost, m.purchase_url, m.min_stock, m.is_archived
              FROM materials m
              JOIN material_types mt ON mt.id = m.material_type_id
              JOIN units u ON u.id = m.unit_id
@@ -73,6 +97,7 @@ final class MaterialsController extends Controller
                 $purchaseDate = Validator::requiredDate(['purchase_date' => $purchaseDate], 'purchase_date');
             }
             $purchaseUrl = Validator::optionalString($_POST, 'purchase_url', 500);
+            $productCode = Validator::optionalString($_POST, 'product_code', 80);
 
             if ($name === null || $typeId === null || $unitId === null || $currentQty === null || $unitCost === null || $minStock === null) {
                 Flash::set('error', 'Campuri invalide.');
@@ -86,21 +111,41 @@ final class MaterialsController extends Controller
 
             $this->pdo->beginTransaction();
             try {
-                $stmt = $this->pdo->prepare(
-                    "INSERT INTO materials (name, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
-                );
-                $stmt->execute([
-                    $name,
-                    $typeId,
-                    $supplierId,
-                    $unitId,
-                    $currentQty,
-                    $unitCost,
-                    $purchaseDate,
-                    $purchaseUrl,
-                    $minStock,
-                ]);
+                $hasProductCode = $this->ensureMaterialsProductCodeColumn();
+                if ($hasProductCode) {
+                    $stmt = $this->pdo->prepare(
+                        "INSERT INTO materials (name, product_code, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
+                    );
+                    $stmt->execute([
+                        $name,
+                        $productCode,
+                        $typeId,
+                        $supplierId,
+                        $unitId,
+                        $currentQty,
+                        $unitCost,
+                        $purchaseDate,
+                        $purchaseUrl,
+                        $minStock,
+                    ]);
+                } else {
+                    $stmt = $this->pdo->prepare(
+                        "INSERT INTO materials (name, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"
+                    );
+                    $stmt->execute([
+                        $name,
+                        $typeId,
+                        $supplierId,
+                        $unitId,
+                        $currentQty,
+                        $unitCost,
+                        $purchaseDate,
+                        $purchaseUrl,
+                        $minStock,
+                    ]);
+                }
                 $materialId = (int) $this->pdo->lastInsertId();
 
                 if ((float) $currentQty > 0) {
@@ -167,6 +212,7 @@ final class MaterialsController extends Controller
                 $purchaseDate = Validator::requiredDate(['purchase_date' => $purchaseDate], 'purchase_date');
             }
             $purchaseUrl = Validator::optionalString($_POST, 'purchase_url', 500);
+            $productCode = Validator::optionalString($_POST, 'product_code', 80);
 
             if ($name === null || $typeId === null || $unitId === null || $unitCost === null || $minStock === null) {
                 Flash::set('error', 'Campuri invalide.');
@@ -178,21 +224,32 @@ final class MaterialsController extends Controller
             }
             $unitCost = $this->moneyToLei($unitCost, $unitCostCurrency, 4);
 
-            $stmt = $this->pdo->prepare(
-                "UPDATE materials
-                 SET name = ?, material_type_id = ?, supplier_id = ?, unit_id = ?, unit_cost = ?, purchase_date = ?, purchase_url = ?, min_stock = ?, updated_at = UTC_TIMESTAMP()
-                 WHERE id = ?"
-            );
-            $stmt->execute([$name, $typeId, $supplierId, $unitId, $unitCost, $purchaseDate, $purchaseUrl, $minStock, $id]);
+            $hasProductCode = $this->ensureMaterialsProductCodeColumn();
+            if ($hasProductCode) {
+                $stmt = $this->pdo->prepare(
+                    "UPDATE materials
+                     SET name = ?, product_code = ?, material_type_id = ?, supplier_id = ?, unit_id = ?, unit_cost = ?, purchase_date = ?, purchase_url = ?, min_stock = ?, updated_at = UTC_TIMESTAMP()
+                     WHERE id = ?"
+                );
+                $stmt->execute([$name, $productCode, $typeId, $supplierId, $unitId, $unitCost, $purchaseDate, $purchaseUrl, $minStock, $id]);
+            } else {
+                $stmt = $this->pdo->prepare(
+                    "UPDATE materials
+                     SET name = ?, material_type_id = ?, supplier_id = ?, unit_id = ?, unit_cost = ?, purchase_date = ?, purchase_url = ?, min_stock = ?, updated_at = UTC_TIMESTAMP()
+                     WHERE id = ?"
+                );
+                $stmt->execute([$name, $typeId, $supplierId, $unitId, $unitCost, $purchaseDate, $purchaseUrl, $minStock, $id]);
+            }
 
             Flash::set('success', 'Material actualizat.');
             $this->redirect('materials/edit', ['id' => $id]);
         }
 
-        $stmt = $this->pdo->prepare(
-            "SELECT id, name, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived
-             FROM materials WHERE id = ? LIMIT 1"
-        );
+        $selectCols = "id, name, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived";
+        if ($this->hasColumn('materials', 'product_code')) {
+            $selectCols = "id, name, product_code, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived";
+        }
+        $stmt = $this->pdo->prepare("SELECT " . $selectCols . " FROM materials WHERE id = ? LIMIT 1");
         $stmt->execute([$id]);
         $material = $stmt->fetch();
         if (!$material) {

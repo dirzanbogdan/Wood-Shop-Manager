@@ -668,6 +668,7 @@ final class UpdateController extends Controller
                 $this->ensureSettingsKey('language', 'ro');
                 $this->ensureSettingsKey('currency', 'lei');
                 $this->ensureColumn('materials', 'purchase_url', "ALTER TABLE materials ADD COLUMN purchase_url VARCHAR(500) NULL");
+                $this->ensureColumn('materials', 'product_code', "ALTER TABLE materials ADD COLUMN product_code VARCHAR(80) NULL AFTER name");
 
                 $this->pdo->commit();
             } catch (\Throwable $e) {
