@@ -61,6 +61,8 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
   - backup DB (download pe PC sau salvare pe server)
   - listă modificări incluse
   - aplicare update din git (`git pull --ff-only`) dacă `proc_open` este permis și există `.git`
+  - afișare log complet la update (exit code + output)
+  - cleanup automat dacă repo rămâne “dirty” după update
   - aplicare update din arhiva GitHub (zip) dacă git nu este disponibil
 
 ## Instalare
@@ -85,6 +87,8 @@ Etape:
 
 Optional (daca proiectul este clonat cu git pe server si `proc_open` este permis):
 - Butonul “Aplica update (git pull)” face `git pull --ff-only`.
+- Daca apare eroare de permisiuni pe `.git` (ex: `.git/logs/...: Permission denied`), userul web nu are drepturi de scriere; foloseste update din zip sau seteaza permisiuni corecte.
+- Output-ul complet al comenzilor este afișat în UI (multi-line).
 
 Alternativ (daca git nu este disponibil pe server):
 - Butonul “Aplica update (GitHub zip)” descarca arhiva `main.zip` si aplica update-ul.

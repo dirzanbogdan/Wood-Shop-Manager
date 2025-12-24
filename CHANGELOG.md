@@ -16,6 +16,9 @@
 - Update: compatibilitate îmbunătățită pentru `git pull` rulat din GUI (PATH/HOME/safe.directory)
 - Update: dropdown-urile “Modificari incluse” sunt închise implicit
 - Update: aplicare update din arhivă GitHub (zip) când git nu este disponibil + aplicare update DB
+- Update: log complet pentru rulările git (exit code + STDOUT + STDERR), afișat multi-line
+- Update: cleanup automat dacă repo rămâne “dirty” după update (`git reset --hard HEAD`)
+- Update: detectare erori de permisiuni pe `.git` (ex: `.git/logs`) + sugestie de rezolvare / fallback zip
 - Fix: eliminat `curl_close()` (deprecated în PHP 8.4+)
 
 ## v2.22122025.002
