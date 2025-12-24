@@ -30,6 +30,7 @@ a{color:var(--primary);text-decoration:none}
 .subnav{display:flex;gap:10px;flex-wrap:wrap;padding:8px 0}
 .subnav a{padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:14px}
 .subnav a.active{background:var(--card)}
+.subnav .sep{color:var(--muted);align-self:center}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
 .col-6{grid-column:span 6}

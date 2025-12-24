@@ -54,13 +54,19 @@ $section = explode('/', $route, 2)[0] ?? '';
       <?php if ($section === 'reports' && $route !== 'reports/index'): ?>
         <div class="container">
           <nav class="subnav">
-            <a class="<?= $route === 'reports/stockMaterials' ? 'active' : '' ?>" href="/?r=reports/stockMaterials">Stoc materie prima</a>
-            <a class="<?= $route === 'reports/stockProducts' ? 'active' : '' ?>" href="/?r=reports/stockProducts">Produse finite disponibile</a>
-            <a class="<?= $route === 'reports/materialsConsumption' ? 'active' : '' ?>" href="/?r=reports/materialsConsumption">Consum materie prima</a>
-            <a class="<?= $route === 'reports/energyConsumption' ? 'active' : '' ?>" href="/?r=reports/energyConsumption">Consum energie electrica</a>
-            <a class="<?= $route === 'reports/hours' ? 'active' : '' ?>" href="/?r=reports/hours">Ore lucrate</a>
-            <a class="<?= $route === 'reports/monthlyCost' ? 'active' : '' ?>" href="/?r=reports/monthlyCost">Cost productie lunar</a>
-            <a class="<?= $route === 'reports/profit' ? 'active' : '' ?>" href="/?r=reports/profit">Profit estimat</a>
+            <a class="<?= $route === 'reports/stockMaterials' ? 'active' : '' ?>" href="/?r=reports/stockMaterials">Stoc materiale</a>
+            <span class="sep">|</span>
+            <a class="<?= $route === 'reports/stockProducts' ? 'active' : '' ?>" href="/?r=reports/stockProducts">Produse finite</a>
+            <span class="sep">|</span>
+            <a class="<?= $route === 'reports/materialsConsumption' ? 'active' : '' ?>" href="/?r=reports/materialsConsumption">Consum materiale</a>
+            <span class="sep">|</span>
+            <a class="<?= $route === 'reports/energyConsumption' ? 'active' : '' ?>" href="/?r=reports/energyConsumption">Consum energie</a>
+            <span class="sep">|</span>
+            <a class="<?= $route === 'reports/hours' ? 'active' : '' ?>" href="/?r=reports/hours">Ore</a>
+            <span class="sep">|</span>
+            <a class="<?= $route === 'reports/monthlyCost' ? 'active' : '' ?>" href="/?r=reports/monthlyCost">Cost productie</a>
+            <span class="sep">|</span>
+            <a class="<?= $route === 'reports/profit' ? 'active' : '' ?>" href="/?r=reports/profit">Profit</a>
           </nav>
         </div>
       <?php endif; ?>

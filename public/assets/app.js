@@ -75,7 +75,8 @@
   const setEnabled = (nodes, enabled) => {
     for (const el of nodes) {
       if (el instanceof HTMLElement) {
-        el.style.display = enabled ? "" : "none";
+        el.style.opacity = enabled ? "1" : "0.5";
+        el.style.filter = enabled ? "" : "grayscale(1)";
       }
       const inputs = el.querySelectorAll("input,select,textarea,button");
       for (const inp of inputs) {
