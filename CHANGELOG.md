@@ -7,6 +7,13 @@
 - Materie primă: câmp nou „Cod produs” în formular
 - Materie primă: buton icon pentru deschiderea „URL achizitie” din listă
 - Materie primă: „Cod produs” unic + opțiuni la conflict (suprascrie / schimbă codul)
+- Setări: card nou „Taxe” (tip entitate + tip impozit)
+- Rapoarte: meniu orizontal în paginile de raport (navigare rapidă între rapoarte)
+- Rapoarte: rânduri cu culori alternante pentru lizibilitate
+- Rapoarte: filtrare + sortare direct în tabel (client-side)
+- Rapoarte: filtru „Produs” pentru consum materie primă / energie / ore / cost lunar
+- Raport „Profit estimat”: coloană „Impozit”, „Pret/Unit”, + „Cant vanduta”, „Valoare vanzare”, „Profit Net”
+- Dashboard: „profit mic” definit ca marjă <= 0 sau < 10% din preț
 
 ## v2.22122025.003
 

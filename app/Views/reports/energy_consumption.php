@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-$qs = http_build_query(['r' => 'reports/energyConsumption', 'range' => $range, 'from' => $from, 'to' => $to, 'export' => 'csv']);
+$qs = http_build_query(['r' => 'reports/energyConsumption', 'range' => $range, 'from' => $from, 'to' => $to, 'product_id' => $product_id ?? '', 'export' => 'csv']);
 ?>
 <div class="card">
   <div class="row" style="justify-content: space-between">
@@ -18,6 +18,15 @@ $qs = http_build_query(['r' => 'reports/energyConsumption', 'range' => $range, '
           <option value="last_month" <?= ($range ?? '') === 'last_month' ? 'selected' : '' ?>>Luna trecuta</option>
           <option value="this_year" <?= ($range ?? '') === 'this_year' ? 'selected' : '' ?>>Anul curent</option>
           <option value="last_year" <?= ($range ?? '') === 'last_year' ? 'selected' : '' ?>>Anul trecut</option>
+        </select>
+        <?php $pid = $product_id ?? null; ?>
+        <select name="product_id" style="min-width:220px">
+          <option value="">Toate produsele</option>
+          <?php foreach (($products ?? []) as $p): ?>
+            <option value="<?= (int) $p['id'] ?>" <?= $pid !== null && (int) $pid === (int) $p['id'] ? 'selected' : '' ?>>
+              <?= htmlspecialchars((string) $p['name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars((string) $p['sku'], ENT_QUOTES, 'UTF-8') ?>)
+            </option>
+          <?php endforeach; ?>
         </select>
         <input name="from" placeholder="dd/mm/yyyy" value="<?= htmlspecialchars(isset($date_dmy) ? $date_dmy((string) $from) : (string) $from, ENT_QUOTES, 'UTF-8') ?>">
         <input name="to" placeholder="dd/mm/yyyy" value="<?= htmlspecialchars(isset($date_dmy) ? $date_dmy((string) $to) : (string) $to, ENT_QUOTES, 'UTF-8') ?>">

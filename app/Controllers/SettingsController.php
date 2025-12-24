@@ -72,6 +72,39 @@ final class SettingsController extends Controller
                 $this->redirect('settings/index');
             }
 
+            if ($action === 'taxes_save') {
+                $entityType = Validator::optionalString($_POST, 'entity_type', 16);
+                if (!in_array($entityType, ['srl', 'other'], true)) {
+                    $entityType = 'srl';
+                }
+
+                $taxType = Validator::optionalString($_POST, 'tax_type', 32);
+                $taxValue = '';
+
+                if ($entityType === 'srl') {
+                    if (!in_array($taxType, ['income_1', 'income_3', 'profit_16'], true)) {
+                        $taxType = 'income_1';
+                    }
+                } else {
+                    if (!in_array($taxType, ['income', 'profit'], true)) {
+                        $taxType = 'income';
+                    }
+                    $taxValueRaw = Validator::requiredDecimal($_POST, 'tax_value', 0);
+                    if ($taxValueRaw === null || (float) $taxValueRaw < 0 || (float) $taxValueRaw > 100) {
+                        Flash::set('error', 'Valoare impozit invalida.');
+                        $this->redirect('settings/index');
+                    }
+                    $taxValue = $taxValueRaw;
+                }
+
+                $this->setSetting('entity_type', $entityType);
+                $this->setSetting('tax_type', (string) $taxType);
+                $this->setSetting('tax_value', $taxValue);
+
+                Flash::set('success', 'Taxe salvate.');
+                $this->redirect('settings/index');
+            }
+
             if ($action === 'unit_create') {
                 $code = Validator::requiredString($_POST, 'code', 1, 20);
                 $name = Validator::requiredString($_POST, 'name', 1, 60);
@@ -145,6 +178,12 @@ final class SettingsController extends Controller
         $cur = $this->currentCurrency();
         $energy = $this->leiToMoney($this->getSetting('energy_cost_per_kwh', '1.00'), $cur, 4);
         $hourly = $this->leiToMoney($this->getSetting('operator_hourly_cost', '0.00'), $cur, 4);
+        $entityType = $this->getSetting('entity_type', 'srl');
+        if (!in_array($entityType, ['srl', 'other'], true)) {
+            $entityType = 'srl';
+        }
+        $taxType = $this->getSetting('tax_type', $entityType === 'srl' ? 'income_1' : 'income');
+        $taxValue = $this->getSetting('tax_value', '0');
 
         $this->render('settings/index', [
             'title' => 'Setari',
@@ -155,6 +194,9 @@ final class SettingsController extends Controller
             'timezone' => $this->getSetting('timezone', 'Europe/Bucharest'),
             'language' => $this->getSetting('language', 'ro'),
             'currency' => $this->getSetting('currency', 'lei'),
+            'entity_type' => $entityType,
+            'tax_type' => $taxType,
+            'tax_value' => $taxValue,
             'timezones' => timezone_identifiers_list(),
             'units' => $units,
         ]);

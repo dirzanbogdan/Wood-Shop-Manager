@@ -258,7 +258,10 @@ INSERT IGNORE INTO settings (`key`, `value`) VALUES
   ('operator_hourly_cost', '0.00'),
   ('timezone', 'Europe/Bucharest'),
   ('language', 'ro'),
-  ('currency', 'lei');
+  ('currency', 'lei'),
+  ('entity_type', 'srl'),
+  ('tax_type', 'income_1'),
+  ('tax_value', '0');
 
 INSERT IGNORE INTO units (id, code, name, created_at, updated_at) VALUES
   (1, 'buc', 'Bucata', UTC_TIMESTAMP(), UTC_TIMESTAMP()),

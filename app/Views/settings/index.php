@@ -86,6 +86,51 @@ declare(strict_types=1);
 </div>
 
 <div class="card" style="margin-top:12px">
+  <h3 style="margin-top:0">Taxe</h3>
+  <form method="post" action="/?r=settings/index" data-taxes-form>
+    <input type="hidden" name="<?= htmlspecialchars((string) $csrf_key, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars((string) $csrf, ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" name="action" value="taxes_save">
+    <?php $entityType = (string) ($entity_type ?? 'srl'); ?>
+    <?php $taxType = (string) ($tax_type ?? 'income_1'); ?>
+    <?php $taxValue = (string) ($tax_value ?? '0'); ?>
+    <div class="grid">
+      <div class="col-12">
+        <label>Tip entitate</label>
+        <div class="row" style="gap:12px">
+          <label><input type="radio" name="entity_type" value="srl" <?= $entityType === 'srl' ? 'checked' : '' ?> required> SRL</label>
+          <label><input type="radio" name="entity_type" value="other" <?= $entityType === 'other' ? 'checked' : '' ?> required> Other</label>
+        </div>
+      </div>
+
+      <div class="col-12" data-taxes-srl>
+        <label>Tip impozit (SRL)</label>
+        <div class="row" style="gap:12px">
+          <label><input type="radio" name="tax_type" value="income_1" <?= $taxType === 'income_1' ? 'checked' : '' ?>> Impozit Venit 1%</label>
+          <label><input type="radio" name="tax_type" value="income_3" <?= $taxType === 'income_3' ? 'checked' : '' ?>> Impozit Venit 3%</label>
+          <label><input type="radio" name="tax_type" value="profit_16" <?= $taxType === 'profit_16' ? 'checked' : '' ?>> Impozit Profit 16%</label>
+        </div>
+      </div>
+
+      <div class="col-6" data-taxes-other>
+        <label>Tip impozit (Other)</label>
+        <div class="row" style="gap:12px">
+          <label><input type="radio" name="tax_type" value="income" <?= $taxType === 'income' ? 'checked' : '' ?>> Venit</label>
+          <label><input type="radio" name="tax_type" value="profit" <?= $taxType === 'profit' ? 'checked' : '' ?>> Profit</label>
+        </div>
+      </div>
+      <div class="col-6" data-taxes-other>
+        <label>Valoare impozit (%)</label>
+        <input name="tax_value" type="number" step="0.01" min="0" max="100" required value="<?= htmlspecialchars($taxValue, ENT_QUOTES, 'UTF-8') ?>">
+      </div>
+
+      <div class="col-12 row" style="justify-content:flex-end">
+        <button class="btn primary" type="submit">Salveaza</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="margin-top:12px">
   <h3 style="margin-top:0">Unitati de masura</h3>
 
   <form method="post" action="/?r=settings/index" class="row" style="gap:10px; align-items:flex-end; flex-wrap:wrap">

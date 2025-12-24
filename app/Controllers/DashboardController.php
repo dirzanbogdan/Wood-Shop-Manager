@@ -49,7 +49,10 @@ final class DashboardController extends Controller
                 WHERE po.status = 'Finalizata'
                 GROUP BY po.product_id
              ) avg_cost ON avg_cost.product_id = p.id
-             WHERE p.is_active = 1
+             WHERE p.is_active = 1 AND (
+               (p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0)) <= 0 OR
+               (p.sale_price > 0 AND ((p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0)) / p.sale_price) < 0.10)
+             )
              ORDER BY margin ASC
              LIMIT 20"
         )->fetchAll();
@@ -63,4 +66,3 @@ final class DashboardController extends Controller
         ]);
     }
 }
-

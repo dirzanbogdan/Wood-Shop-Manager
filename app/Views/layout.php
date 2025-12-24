@@ -51,10 +51,25 @@ $section = explode('/', $route, 2)[0] ?? '';
           <?php endif; ?>
         </nav>
       </div>
+      <?php if ($section === 'reports' && $route !== 'reports/index'): ?>
+        <div class="container">
+          <nav class="subnav">
+            <a class="<?= $route === 'reports/stockMaterials' ? 'active' : '' ?>" href="/?r=reports/stockMaterials">Stoc materie prima</a>
+            <a class="<?= $route === 'reports/stockProducts' ? 'active' : '' ?>" href="/?r=reports/stockProducts">Produse finite disponibile</a>
+            <a class="<?= $route === 'reports/materialsConsumption' ? 'active' : '' ?>" href="/?r=reports/materialsConsumption">Consum materie prima</a>
+            <a class="<?= $route === 'reports/energyConsumption' ? 'active' : '' ?>" href="/?r=reports/energyConsumption">Consum energie electrica</a>
+            <a class="<?= $route === 'reports/hours' ? 'active' : '' ?>" href="/?r=reports/hours">Ore lucrate</a>
+            <a class="<?= $route === 'reports/monthlyCost' ? 'active' : '' ?>" href="/?r=reports/monthlyCost">Cost productie lunar</a>
+            <a class="<?= $route === 'reports/profit' ? 'active' : '' ?>" href="/?r=reports/profit">Profit estimat</a>
+          </nav>
+        </div>
+      <?php endif; ?>
     <?php endif; ?>
   </div>
 
   <div class="container">
+    <?php $sectionSafe = preg_replace('/[^a-z0-9_-]/i', '', (string) $section); ?>
+    <div class="page page-<?= htmlspecialchars($sectionSafe, ENT_QUOTES, 'UTF-8') ?>">
     <?php if (isset($flash) && is_array($flash)): ?>
       <?php if (isset($flash['error']) && $flash['error'] !== ''): ?>
         <div class="card" style="border-color: rgba(220,38,38,.4)">
@@ -69,6 +84,7 @@ $section = explode('/', $route, 2)[0] ?? '';
     <?php endif; ?>
 
     <?= $content ?? '' ?>
+    </div>
   </div>
 
   <div class="container" style="margin-top: 18px; padding-bottom: 18px">

@@ -27,6 +27,9 @@ a{color:var(--primary);text-decoration:none}
 .nav{display:flex;gap:10px;flex-wrap:wrap}
 .nav a{padding:8px 10px;border-radius:8px}
 .nav a.active{background:var(--card)}
+.subnav{display:flex;gap:10px;flex-wrap:wrap;padding:8px 0}
+.subnav a{padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:14px}
+.subnav a.active{background:var(--card)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
 .col-6{grid-column:span 6}
@@ -43,6 +46,8 @@ textarea{min-height:90px}
 table{width:100%;border-collapse:collapse}
 th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
 th{color:var(--muted);font-weight:600}
+.page-reports table tbody tr:nth-child(even){background:rgba(0,0,0,.03)}
+[data-theme="dark"] .page-reports table tbody tr:nth-child(even){background:rgba(255,255,255,.03)}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--border);background:var(--bg);color:var(--fg)}
 .badge.ok{border-color:rgba(22,163,74,.35);color:var(--ok)}
 .badge.danger{border-color:rgba(220,38,38,.35);color:var(--danger)}

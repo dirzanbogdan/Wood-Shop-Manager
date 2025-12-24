@@ -96,19 +96,26 @@ final class ReportsController extends Controller
         $this->requireAuth();
 
         [$from, $to, $range] = $this->dateRange();
+        $productId = Validator::optionalInt($_GET, 'product_id', 1);
 
-        $stmt = $this->pdo->prepare(
-            "SELECT m.name AS material_name, mt.name AS type_name, u.code AS unit_code,
-                    SUM(pmu.qty_used) AS qty_used, SUM(pmu.cost) AS cost
-             FROM production_material_usage pmu
-             JOIN materials m ON m.id = pmu.material_id
-             JOIN material_types mt ON mt.id = m.material_type_id
-             JOIN units u ON u.id = m.unit_id
-             WHERE pmu.created_at >= :from AND pmu.created_at < :to
-             GROUP BY pmu.material_id
-             ORDER BY cost DESC"
-        );
-        $stmt->execute(['from' => $from . ' 00:00:00', 'to' => $to . ' 23:59:59']);
+        $sql = "SELECT m.name AS material_name, mt.name AS type_name, u.code AS unit_code,
+                       SUM(pmu.qty_used) AS qty_used, SUM(pmu.cost) AS cost
+                FROM production_material_usage pmu
+                JOIN materials m ON m.id = pmu.material_id
+                JOIN material_types mt ON mt.id = m.material_type_id
+                JOIN units u ON u.id = m.unit_id
+                JOIN production_orders po ON po.id = pmu.production_order_id
+                WHERE pmu.created_at >= :from AND pmu.created_at < :to";
+        $params = ['from' => $from . ' 00:00:00', 'to' => $to . ' 23:59:59'];
+        if ($productId !== null) {
+            $sql .= " AND po.product_id = :product_id";
+            $params['product_id'] = $productId;
+        }
+        $sql .= " GROUP BY pmu.material_id
+                  ORDER BY cost DESC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
         if ($this->wantsCsv()) {
@@ -130,6 +137,8 @@ final class ReportsController extends Controller
             'from' => $from,
             'to' => $to,
             'range' => $range,
+            'products' => $this->productsList(),
+            'product_id' => $productId,
         ]);
     }
 
@@ -138,19 +147,26 @@ final class ReportsController extends Controller
         $this->requireAuth();
 
         [$from, $to, $range] = $this->dateRange();
+        $productId = Validator::optionalInt($_GET, 'product_id', 1);
 
-        $stmt = $this->pdo->prepare(
-            "SELECT mc.name AS machine_name,
-                    SUM(pmu.hours_used) AS hours_used,
-                    SUM(pmu.energy_kwh) AS energy_kwh,
-                    SUM(pmu.cost) AS cost
-             FROM production_machine_usage pmu
-             JOIN machines mc ON mc.id = pmu.machine_id
-             WHERE pmu.created_at >= :from AND pmu.created_at < :to
-             GROUP BY pmu.machine_id
-             ORDER BY cost DESC"
-        );
-        $stmt->execute(['from' => $from . ' 00:00:00', 'to' => $to . ' 23:59:59']);
+        $sql = "SELECT mc.name AS machine_name,
+                       SUM(pmu.hours_used) AS hours_used,
+                       SUM(pmu.energy_kwh) AS energy_kwh,
+                       SUM(pmu.cost) AS cost
+                FROM production_machine_usage pmu
+                JOIN machines mc ON mc.id = pmu.machine_id
+                JOIN production_orders po ON po.id = pmu.production_order_id
+                WHERE pmu.created_at >= :from AND pmu.created_at < :to";
+        $params = ['from' => $from . ' 00:00:00', 'to' => $to . ' 23:59:59'];
+        if ($productId !== null) {
+            $sql .= " AND po.product_id = :product_id";
+            $params['product_id'] = $productId;
+        }
+        $sql .= " GROUP BY pmu.machine_id
+                  ORDER BY cost DESC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
         if ($this->wantsCsv()) {
@@ -171,6 +187,8 @@ final class ReportsController extends Controller
             'from' => $from,
             'to' => $to,
             'range' => $range,
+            'products' => $this->productsList(),
+            'product_id' => $productId,
         ]);
     }
 
@@ -179,21 +197,27 @@ final class ReportsController extends Controller
         $this->requireAuth();
 
         [$from, $to, $range] = $this->dateRange();
+        $productId = Validator::optionalInt($_GET, 'product_id', 1);
 
         $hourly = (float) $this->getSettingDecimal('operator_hourly_cost', '0.00');
 
-        $stmt = $this->pdo->prepare(
-            "SELECT u.name AS operator_name,
-                    SUM(p.manpower_hours * po.qty) AS hours_worked,
-                    SUM(p.manpower_hours * po.qty) * :hourly AS cost
-             FROM production_orders po
-             JOIN users u ON u.id = po.operator_user_id
-             JOIN products p ON p.id = po.product_id
-             WHERE po.status = 'Finalizata' AND po.completed_at >= :from AND po.completed_at < :to
-             GROUP BY po.operator_user_id
-             ORDER BY hours_worked DESC"
-        );
-        $stmt->execute(['from' => $from . ' 00:00:00', 'to' => $to . ' 23:59:59', 'hourly' => $hourly]);
+        $sql = "SELECT u.name AS operator_name,
+                       SUM(p.manpower_hours * po.qty) AS hours_worked,
+                       SUM(p.manpower_hours * po.qty) * :hourly AS cost
+                FROM production_orders po
+                JOIN users u ON u.id = po.operator_user_id
+                JOIN products p ON p.id = po.product_id
+                WHERE po.status = 'Finalizata' AND po.completed_at >= :from AND po.completed_at < :to";
+        $params = ['from' => $from . ' 00:00:00', 'to' => $to . ' 23:59:59', 'hourly' => $hourly];
+        if ($productId !== null) {
+            $sql .= " AND po.product_id = :product_id";
+            $params['product_id'] = $productId;
+        }
+        $sql .= " GROUP BY po.operator_user_id
+                  ORDER BY hours_worked DESC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
         if ($this->wantsCsv()) {
@@ -214,6 +238,8 @@ final class ReportsController extends Controller
             'to' => $to,
             'range' => $range,
             'hourly' => $hourly,
+            'products' => $this->productsList(),
+            'product_id' => $productId,
         ]);
     }
 
@@ -222,20 +248,26 @@ final class ReportsController extends Controller
         $this->requireAuth();
 
         [$from, $to, $range] = $this->dateRange();
+        $productId = Validator::optionalInt($_GET, 'product_id', 1);
 
-        $stmt = $this->pdo->prepare(
-            "SELECT DATE_FORMAT(po.completed_at, '%Y-%m') AS ym,
-                    SUM(pc.materials_cost) AS materials_cost,
-                    SUM(pc.energy_cost) AS energy_cost,
-                    SUM(pc.manpower_cost) AS manpower_cost,
-                    SUM(pc.total_cost) AS total_cost
-             FROM production_orders po
-             JOIN production_costs pc ON pc.production_order_id = po.id
-             WHERE po.status = 'Finalizata' AND po.completed_at >= :from AND po.completed_at < :to
-             GROUP BY ym
-             ORDER BY ym DESC"
-        );
-        $stmt->execute(['from' => $from . ' 00:00:00', 'to' => $to . ' 23:59:59']);
+        $sql = "SELECT DATE_FORMAT(po.completed_at, '%Y-%m') AS ym,
+                       SUM(pc.materials_cost) AS materials_cost,
+                       SUM(pc.energy_cost) AS energy_cost,
+                       SUM(pc.manpower_cost) AS manpower_cost,
+                       SUM(pc.total_cost) AS total_cost
+                FROM production_orders po
+                JOIN production_costs pc ON pc.production_order_id = po.id
+                WHERE po.status = 'Finalizata' AND po.completed_at >= :from AND po.completed_at < :to";
+        $params = ['from' => $from . ' 00:00:00', 'to' => $to . ' 23:59:59'];
+        if ($productId !== null) {
+            $sql .= " AND po.product_id = :product_id";
+            $params['product_id'] = $productId;
+        }
+        $sql .= " GROUP BY ym
+                  ORDER BY ym DESC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
         if ($this->wantsCsv()) {
@@ -257,6 +289,8 @@ final class ReportsController extends Controller
             'from' => $from,
             'to' => $to,
             'range' => $range,
+            'products' => $this->productsList(),
+            'product_id' => $productId,
         ]);
     }
 
@@ -264,10 +298,50 @@ final class ReportsController extends Controller
     {
         $this->requireAuth();
 
-        $rows = $this->pdo->query(
-            "SELECT p.id, p.name, p.sku, p.sale_price,
+        $entityType = $this->getSettingString('entity_type', 'srl');
+        if (!in_array($entityType, ['srl', 'other'], true)) {
+            $entityType = 'srl';
+        }
+        $taxType = $this->getSettingString('tax_type', $entityType === 'srl' ? 'income_1' : 'income');
+        $taxValue = (float) $this->getSettingDecimal('tax_value', '0');
+
+        $taxMode = 'income';
+        $taxRate = 0.01;
+        if ($entityType === 'srl') {
+            if ($taxType === 'income_3') {
+                $taxMode = 'income';
+                $taxRate = 0.03;
+            } elseif ($taxType === 'profit_16') {
+                $taxMode = 'profit';
+                $taxRate = 0.16;
+            } else {
+                $taxMode = 'income';
+                $taxRate = 0.01;
+            }
+        } else {
+            $taxRate = max(0.0, min(1.0, $taxValue / 100.0));
+            $taxMode = $taxType === 'profit' ? 'profit' : 'income';
+        }
+
+        $stmt = $this->pdo->prepare(
+            "SELECT p.id, p.name, p.sku,
+                    p.sale_price AS pret_unit,
                     COALESCE(avg_cost.avg_cost_per_unit, 0) AS avg_cost_per_unit,
-                    (p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0)) AS margin
+                    CASE
+                      WHEN :tax_mode = 'income' THEN (p.sale_price * :tax_rate)
+                      WHEN :tax_mode = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0), 0) * :tax_rate)
+                      ELSE 0
+                    END AS impozit,
+                    (p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0)) AS marja,
+                    COALESCE(s.sum_qty, 0) AS cant_vanduta,
+                    (COALESCE(s.sum_qty, 0) * p.sale_price) AS valoare_vanzare,
+                    ((p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0) -
+                      CASE
+                        WHEN :tax_mode = 'income' THEN (p.sale_price * :tax_rate)
+                        WHEN :tax_mode = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0), 0) * :tax_rate)
+                        ELSE 0
+                      END
+                    ) * COALESCE(s.sum_qty, 0)) AS profit_net
              FROM products p
              LEFT JOIN (
                 SELECT po.product_id, AVG(pc.cost_per_unit) AS avg_cost_per_unit
@@ -276,18 +350,29 @@ final class ReportsController extends Controller
                 WHERE po.status = 'Finalizata'
                 GROUP BY po.product_id
              ) avg_cost ON avg_cost.product_id = p.id
+             LEFT JOIN (
+                SELECT product_id, SUM(qty) AS sum_qty
+                FROM sales
+                GROUP BY product_id
+             ) s ON s.product_id = p.id
              WHERE p.is_active = 1
-             ORDER BY margin ASC, p.name ASC"
-        )->fetchAll();
+             ORDER BY profit_net ASC, p.name ASC"
+        );
+        $stmt->execute(['tax_mode' => $taxMode, 'tax_rate' => $taxRate]);
+        $rows = $stmt->fetchAll();
 
         if ($this->wantsCsv()) {
-            $this->csv('profit_estimare.csv', ['Produs', 'SKU', 'Pret', 'Cost mediu/unit', 'Marja'], array_map(static function (array $r): array {
+            $this->csv('profit_estimare.csv', ['Produs', 'SKU', 'Pret/Unit', 'Cost mediu/unit', 'Impozit', 'Marja', 'Cant vanduta', 'Valoare vanzare', 'Profit Net'], array_map(static function (array $r): array {
                 return [
                     (string) $r['name'],
                     (string) $r['sku'],
-                    (string) $r['sale_price'],
+                    (string) $r['pret_unit'],
                     (string) $r['avg_cost_per_unit'],
-                    (string) $r['margin'],
+                    (string) $r['impozit'],
+                    (string) $r['marja'],
+                    (string) $r['cant_vanduta'],
+                    (string) $r['valoare_vanzare'],
+                    (string) $r['profit_net'],
                 ];
             }, $rows));
             return;
@@ -370,5 +455,24 @@ final class ReportsController extends Controller
         $v = $row ? (string) $row['value'] : $fallback;
         $v = str_replace(',', '.', trim($v));
         return preg_match('/^-?\d+(\.\d+)?$/', $v) ? $v : $fallback;
+    }
+
+    private function getSettingString(string $key, string $fallback): string
+    {
+        $stmt = $this->pdo->prepare("SELECT `value` FROM settings WHERE `key` = ? LIMIT 1");
+        $stmt->execute([$key]);
+        $row = $stmt->fetch();
+        $v = $row ? trim((string) $row['value']) : $fallback;
+        return $v !== '' ? $v : $fallback;
+    }
+
+    private function productsList(): array
+    {
+        return $this->pdo->query(
+            "SELECT id, name, sku
+             FROM products
+             WHERE is_active = 1
+             ORDER BY name ASC"
+        )->fetchAll();
     }
 }

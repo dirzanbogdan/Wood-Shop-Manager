@@ -20,7 +20,7 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
   - materiale cu stoc critic
   - comenzi de producție în lucru
   - consum energie ultimele 30 zile
-  - produse cu marjă mică (estimativ)
+  - produse cu marjă mică (estimativ; marjă <= 0 sau < 10% din preț)
 - Materie primă:
   - CRUD materiale, arhivare
   - cod produs (opțional)
@@ -45,13 +45,14 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
   - anulare comandă (doar pentru comenzi pornite)
 - Rapoarte (cu export CSV):
   - stoc materie primă / stoc produse finite
-  - consum materie primă (interval)
-  - consum energie (interval)
-  - ore lucrate (interval)
-  - cost producție lunar (interval)
-  - profit estimat pe produs (pe baza costului mediu/unit)
+  - consum materie primă (interval + filtru produs)
+  - consum energie (interval + filtru produs)
+  - ore lucrate (interval + filtru produs)
+  - cost producție lunar (interval + filtru produs)
+  - profit estimat pe produs (pe baza costului mediu/unit + impozit)
 - Setări:
   - cost energie, cost orar operator (stocate în lei; introducere cu monedă selectabilă)
+  - taxe: tip entitate + tip impozit (folosit în raportul „Profit estimat”)
   - administrare unități de măsură (adăugare/editare)
   - nomenclatoare: furnizori, tipuri materiale, categorii produse
 - Monedă:
