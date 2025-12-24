@@ -329,8 +329,8 @@ final class ReportsController extends Controller
                     COALESCE(avg_cost.avg_cost_per_unit, 0) AS avg_cost_per_unit,
                     COALESCE(avg_cost.avg_materials_cost_per_unit, 0) AS avg_materials_cost_per_unit,
                     CASE
-                      WHEN :tax_mode = 'income' THEN (p.sale_price * :tax_rate)
-                      WHEN :tax_mode = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_materials_cost_per_unit, 0), 0) * :tax_rate)
+                      WHEN :tax_mode_1 = 'income' THEN (p.sale_price * :tax_rate_1)
+                      WHEN :tax_mode_1 = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_materials_cost_per_unit, 0), 0) * :tax_rate_1)
                       ELSE 0
                     END AS impozit,
                     (p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0)) AS marja,
@@ -338,8 +338,8 @@ final class ReportsController extends Controller
                     (COALESCE(s.sum_qty, 0) * p.sale_price) AS valoare_vanzare,
                     ((p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0) -
                       CASE
-                        WHEN :tax_mode = 'income' THEN (p.sale_price * :tax_rate)
-                        WHEN :tax_mode = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_materials_cost_per_unit, 0), 0) * :tax_rate)
+                        WHEN :tax_mode_2 = 'income' THEN (p.sale_price * :tax_rate_2)
+                        WHEN :tax_mode_2 = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_materials_cost_per_unit, 0), 0) * :tax_rate_2)
                         ELSE 0
                       END
                     ) * COALESCE(s.sum_qty, 0)) AS profit_net
@@ -361,7 +361,12 @@ final class ReportsController extends Controller
              WHERE p.is_active = 1
              ORDER BY profit_net ASC, p.name ASC"
         );
-        $stmt->execute(['tax_mode' => $taxMode, 'tax_rate' => $taxRate]);
+        $stmt->execute([
+            'tax_mode_1' => $taxMode,
+            'tax_rate_1' => $taxRate,
+            'tax_mode_2' => $taxMode,
+            'tax_rate_2' => $taxRate,
+        ]);
         $rows = $stmt->fetchAll();
 
         if ($this->wantsCsv()) {
