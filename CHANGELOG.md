@@ -9,10 +9,12 @@
 - Materie primă: „Cod produs” unic + opțiuni la conflict (suprascrie / schimbă codul)
 - Setări: card nou „Taxe” (tip entitate + tip impozit)
 - Rapoarte: meniu orizontal în paginile de raport (navigare rapidă între rapoarte)
+- Rapoarte: denumiri scurte în meniuri (Stoc materiale, Produse finite, Consum materiale, Consum energie, Ore, Cost productie, Profit)
 - Rapoarte: rânduri cu culori alternante pentru lizibilitate
 - Rapoarte: filtrare + sortare direct în tabel (client-side)
 - Rapoarte: filtru „Produs” pentru consum materie primă / energie / ore / cost lunar
 - Raport „Profit estimat”: coloană „Impozit”, „Pret/Unit”, + „Cant vanduta”, „Valoare vanzare”, „Profit Net”
+- Fix: Raport „Profit” nu mai returnează eroare 500 (PDO params)
 - Dashboard: „profit mic” definit ca marjă <= 0 sau < 10% din preț
 
 ## v2.22122025.003
