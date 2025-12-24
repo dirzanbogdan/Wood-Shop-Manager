@@ -301,6 +301,12 @@ final class UpdateController extends Controller
         }
         $env = $this->gitEnv($root);
 
+        $beforeHead = $this->runGit(['rev-parse', '--short', 'HEAD'], $root, $env);
+        $beforeHeadShort = '';
+        if (preg_match('/^[0-9a-f]{7,40}$/i', (string) ($beforeHead['out'] ?? ''))) {
+            $beforeHeadShort = substr((string) $beforeHead['out'], 0, 7);
+        }
+
         $pull = $this->runGit(['pull', '--ff-only'], $root, $env);
         $out = (string) ($pull['out'] ?? '');
         $err = (string) ($pull['err'] ?? '');
@@ -330,6 +336,27 @@ final class UpdateController extends Controller
             $ok = (($pull2['code'] ?? 1) === 0) || $isOkByOutput;
         }
 
+        if (
+            !$ok
+            && preg_match('/Your local changes to the following files would be overwritten by merge/i', $combined)
+        ) {
+            $reset = $this->runGit(['reset', '--hard', 'HEAD'], $root, $env);
+            $pull3 = $this->runGit(['pull', '--ff-only'], $root, $env);
+            $out = (string) ($pull3['out'] ?? '');
+            $err = (string) ($pull3['err'] ?? '');
+            $combined = trim($out . "\n" . $err);
+            $msg = trim($out !== '' ? $out : $err);
+            if ($msg === '') {
+                $msg = 'Fara output.';
+            }
+            $ok = (($pull3['code'] ?? 1) === 0) || ($combined !== '' && (bool) preg_match('/\b(Already up[ -]to[ -]date\.|Fast-forward|Updating\s+[0-9a-f]{7,40}\.\.[0-9a-f]{7,40})\b/i', $combined));
+            if (($reset['code'] ?? 1) === 0) {
+                $msg = trim('Reset local (discard changes): OK' . "\n" . $msg);
+            } else {
+                $msg = trim('Reset local (discard changes): ESUAT' . "\n" . $msg);
+            }
+        }
+
         if (!$ok && preg_match('/not found|No such file or directory/i', $combined) && str_contains($combined, 'git')) {
             $msg = $msg . "\n" . 'Sugestie: pe server, git nu este in PATH pentru PHP. Foloseste update din arhiva GitHub (zip) sau seteaza PATH/HOME pentru PHP.';
         }
@@ -343,7 +370,18 @@ final class UpdateController extends Controller
             $head = $this->runGit(['rev-parse', '--short', 'HEAD'], $root, $env);
             $headOut = (string) ($head['out'] ?? '');
             if (preg_match('/^[0-9a-f]{7,40}$/i', $headOut)) {
-                $msg = trim($msg . "\nHEAD: " . substr($headOut, 0, 7));
+                $afterHeadShort = substr($headOut, 0, 7);
+                if ($beforeHeadShort !== '' && $afterHeadShort !== '' && $beforeHeadShort !== $afterHeadShort) {
+                    $msg = trim($msg . "\nHEAD: " . $beforeHeadShort . ' -> ' . $afterHeadShort);
+                } else {
+                    $msg = trim($msg . "\nHEAD: " . $afterHeadShort);
+                }
+            }
+
+            $status = $this->runGit(['status', '--porcelain'], $root, $env);
+            $porcelain = trim((string) ($status['out'] ?? ''));
+            if ($porcelain !== '') {
+                $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain);
             }
         }
 
