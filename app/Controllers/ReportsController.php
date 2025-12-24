@@ -327,9 +327,10 @@ final class ReportsController extends Controller
             "SELECT p.id, p.name, p.sku,
                     p.sale_price AS pret_unit,
                     COALESCE(avg_cost.avg_cost_per_unit, 0) AS avg_cost_per_unit,
+                    COALESCE(avg_cost.avg_materials_cost_per_unit, 0) AS avg_materials_cost_per_unit,
                     CASE
                       WHEN :tax_mode = 'income' THEN (p.sale_price * :tax_rate)
-                      WHEN :tax_mode = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0), 0) * :tax_rate)
+                      WHEN :tax_mode = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_materials_cost_per_unit, 0), 0) * :tax_rate)
                       ELSE 0
                     END AS impozit,
                     (p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0)) AS marja,
@@ -338,13 +339,15 @@ final class ReportsController extends Controller
                     ((p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0) -
                       CASE
                         WHEN :tax_mode = 'income' THEN (p.sale_price * :tax_rate)
-                        WHEN :tax_mode = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_cost_per_unit, 0), 0) * :tax_rate)
+                        WHEN :tax_mode = 'profit' THEN (GREATEST(p.sale_price - COALESCE(avg_cost.avg_materials_cost_per_unit, 0), 0) * :tax_rate)
                         ELSE 0
                       END
                     ) * COALESCE(s.sum_qty, 0)) AS profit_net
              FROM products p
              LEFT JOIN (
-                SELECT po.product_id, AVG(pc.cost_per_unit) AS avg_cost_per_unit
+                SELECT po.product_id,
+                       AVG(pc.cost_per_unit) AS avg_cost_per_unit,
+                       AVG(CASE WHEN po.qty > 0 THEN (pc.materials_cost / po.qty) ELSE 0 END) AS avg_materials_cost_per_unit
                 FROM production_orders po
                 JOIN production_costs pc ON pc.production_order_id = po.id
                 WHERE po.status = 'Finalizata'
