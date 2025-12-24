@@ -153,7 +153,6 @@ final class MaterialsController extends Controller
             }
             $unitCost = $this->moneyToLei($unitCost, $unitCostCurrency, 4);
 
-            $conflictAction = isset($_POST['product_code_conflict_action']) ? (string) $_POST['product_code_conflict_action'] : '';
             $hasProductCode = $this->ensureMaterialsProductCodeColumn();
             if ($hasProductCode) {
                 $this->ensureMaterialsProductCodeUniqueIndex();
@@ -374,6 +373,7 @@ final class MaterialsController extends Controller
             }
             $purchaseUrl = Validator::optionalString($_POST, 'purchase_url', 500);
             $productCode = Validator::optionalString($_POST, 'product_code', 80);
+            $conflictAction = isset($_POST['product_code_conflict_action']) ? (string) $_POST['product_code_conflict_action'] : '';
 
             if ($name === null || $typeId === null || $unitId === null || $unitCost === null || $minStock === null) {
                 Flash::set('error', 'Campuri invalide.');
