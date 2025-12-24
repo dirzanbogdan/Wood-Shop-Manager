@@ -36,6 +36,49 @@ final class MaterialsController extends Controller
         return $this->hasColumn('materials', 'product_code');
     }
 
+    private function ensureMaterialsProductCodeUniqueIndex(): void
+    {
+        if (!$this->hasColumn('materials', 'product_code')) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) AS c
+             FROM INFORMATION_SCHEMA.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'materials' AND INDEX_NAME = 'materials_product_code_unique'"
+        );
+        $stmt->execute();
+        $exists = (int) (($stmt->fetch()['c'] ?? 0)) > 0;
+        if ($exists) {
+            return;
+        }
+
+        $dup = $this->pdo->query(
+            "SELECT 1
+             FROM materials
+             WHERE product_code IS NOT NULL
+             GROUP BY product_code
+             HAVING COUNT(*) > 1
+             LIMIT 1"
+        )->fetch();
+        if ($dup) {
+            return;
+        }
+
+        try {
+            $this->pdo->exec("ALTER TABLE materials ADD UNIQUE KEY materials_product_code_unique (product_code)");
+        } catch (\Throwable $e) {
+        }
+    }
+
+    private function findMaterialByProductCode(string $productCode): ?array
+    {
+        $stmt = $this->pdo->prepare("SELECT id, name, product_code FROM materials WHERE product_code = ? LIMIT 1");
+        $stmt->execute([$productCode]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $row : null;
+    }
+
     public function index(): void
     {
         $this->requireAuth();
@@ -98,6 +141,7 @@ final class MaterialsController extends Controller
             }
             $purchaseUrl = Validator::optionalString($_POST, 'purchase_url', 500);
             $productCode = Validator::optionalString($_POST, 'product_code', 80);
+            $conflictAction = isset($_POST['product_code_conflict_action']) ? (string) $_POST['product_code_conflict_action'] : '';
 
             if ($name === null || $typeId === null || $unitId === null || $currentQty === null || $unitCost === null || $minStock === null) {
                 Flash::set('error', 'Campuri invalide.');
@@ -109,9 +153,93 @@ final class MaterialsController extends Controller
             }
             $unitCost = $this->moneyToLei($unitCost, $unitCostCurrency, 4);
 
+            $conflictAction = isset($_POST['product_code_conflict_action']) ? (string) $_POST['product_code_conflict_action'] : '';
+            $hasProductCode = $this->ensureMaterialsProductCodeColumn();
+            if ($hasProductCode) {
+                $this->ensureMaterialsProductCodeUniqueIndex();
+            }
+
+            if ($hasProductCode && $productCode !== null) {
+                $existing = $this->findMaterialByProductCode($productCode);
+                if ($existing) {
+                    if ($conflictAction !== 'overwrite') {
+                        $types = $this->pdo->query("SELECT id, name FROM material_types WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
+                        $units = $this->pdo->query("SELECT id, code FROM units ORDER BY code ASC")->fetchAll();
+                        $suppliers = $this->pdo->query("SELECT id, name FROM suppliers WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
+
+                        $this->render('materials/form', [
+                            'title' => 'Adauga material',
+                            'csrf' => CSRF::token($csrfKey),
+                            'csrf_key' => $csrfKey,
+                            'types' => $types,
+                            'units' => $units,
+                            'suppliers' => $suppliers,
+                            'material' => null,
+                            'form' => [
+                                'name' => $name,
+                                'product_code' => $productCode,
+                                'material_type_id' => $typeId,
+                                'supplier_id' => $supplierId,
+                                'unit_id' => $unitId,
+                                'current_qty' => $currentQty,
+                                'unit_cost' => $unitCost,
+                                'purchase_date' => $purchaseDate,
+                                'purchase_url' => $purchaseUrl,
+                                'min_stock' => $minStock,
+                            ],
+                            'product_code_conflict' => $existing,
+                        ]);
+                        return;
+                    }
+
+                    $this->pdo->beginTransaction();
+                    try {
+                        $lock = $this->pdo->prepare("SELECT id FROM materials WHERE product_code = ? LIMIT 1 FOR UPDATE");
+                        $lock->execute([$productCode]);
+                        $row = $lock->fetch();
+                        if (!is_array($row)) {
+                            throw new \RuntimeException('Material lipsa');
+                        }
+                        $existingId = (int) $row['id'];
+
+                        $this->pdo->prepare(
+                            "UPDATE materials
+                             SET name = ?, product_code = ?, material_type_id = ?, supplier_id = ?, unit_id = ?, current_qty = ?, unit_cost = ?, purchase_date = ?, purchase_url = ?, min_stock = ?, updated_at = UTC_TIMESTAMP()
+                             WHERE id = ?"
+                        )->execute([
+                            $name,
+                            $productCode,
+                            $typeId,
+                            $supplierId,
+                            $unitId,
+                            $currentQty,
+                            $unitCost,
+                            $purchaseDate,
+                            $purchaseUrl,
+                            $minStock,
+                            $existingId,
+                        ]);
+
+                        $mv = $this->pdo->prepare(
+                            "INSERT INTO material_movements (material_id, movement_type, qty, unit_cost, ref_type, ref_id, note, user_id, created_at)
+                             VALUES (?, 'adjust', ?, ?, 'overwrite', NULL, 'Overwrite', ?, UTC_TIMESTAMP())"
+                        );
+                        $mv->execute([$existingId, $currentQty, $unitCost, (int) Auth::user()['id']]);
+
+                        $this->pdo->commit();
+                    } catch (\Throwable $e) {
+                        $this->pdo->rollBack();
+                        Flash::set('error', 'Eroare la suprascriere.');
+                        $this->redirect('materials/create');
+                    }
+
+                    Flash::set('success', 'Material suprascris.');
+                    $this->redirect('materials/index');
+                }
+            }
+
             $this->pdo->beginTransaction();
             try {
-                $hasProductCode = $this->ensureMaterialsProductCodeColumn();
                 if ($hasProductCode) {
                     $stmt = $this->pdo->prepare(
                         "INSERT INTO materials (name, product_code, material_type_id, supplier_id, unit_id, current_qty, unit_cost, purchase_date, purchase_url, min_stock, is_archived, created_at, updated_at)
@@ -159,6 +287,39 @@ final class MaterialsController extends Controller
                 $this->pdo->commit();
             } catch (\Throwable $e) {
                 $this->pdo->rollBack();
+                if ($hasProductCode && $productCode !== null) {
+                    $existing = $this->findMaterialByProductCode($productCode);
+                    if ($existing) {
+                        $types = $this->pdo->query("SELECT id, name FROM material_types WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
+                        $units = $this->pdo->query("SELECT id, code FROM units ORDER BY code ASC")->fetchAll();
+                        $suppliers = $this->pdo->query("SELECT id, name FROM suppliers WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
+
+                        $this->render('materials/form', [
+                            'title' => 'Adauga material',
+                            'csrf' => CSRF::token($csrfKey),
+                            'csrf_key' => $csrfKey,
+                            'types' => $types,
+                            'units' => $units,
+                            'suppliers' => $suppliers,
+                            'material' => null,
+                            'form' => [
+                                'name' => $name,
+                                'product_code' => $productCode,
+                                'material_type_id' => $typeId,
+                                'supplier_id' => $supplierId,
+                                'unit_id' => $unitId,
+                                'current_qty' => $currentQty,
+                                'unit_cost' => $unitCost,
+                                'purchase_date' => $purchaseDate,
+                                'purchase_url' => $purchaseUrl,
+                                'min_stock' => $minStock,
+                            ],
+                            'product_code_conflict' => $existing,
+                        ]);
+                        return;
+                    }
+                }
+
                 Flash::set('error', 'Eroare la salvare.');
                 $this->redirect('materials/create');
             }
@@ -225,6 +386,61 @@ final class MaterialsController extends Controller
             $unitCost = $this->moneyToLei($unitCost, $unitCostCurrency, 4);
 
             $hasProductCode = $this->ensureMaterialsProductCodeColumn();
+            if ($hasProductCode) {
+                $this->ensureMaterialsProductCodeUniqueIndex();
+            }
+
+            if ($hasProductCode && $productCode !== null) {
+                $stmt = $this->pdo->prepare("SELECT id, name, product_code FROM materials WHERE product_code = ? AND id <> ? LIMIT 1");
+                $stmt->execute([$productCode, $id]);
+                $existing = $stmt->fetch();
+                if (is_array($existing)) {
+                    if ($conflictAction !== 'overwrite') {
+                        $types = $this->pdo->query("SELECT id, name FROM material_types WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
+                        $units = $this->pdo->query("SELECT id, code FROM units ORDER BY code ASC")->fetchAll();
+                        $suppliers = $this->pdo->query("SELECT id, name FROM suppliers WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
+
+                        $this->render('materials/form', [
+                            'title' => 'Editeaza material',
+                            'csrf' => CSRF::token($csrfKey),
+                            'csrf_key' => $csrfKey,
+                            'types' => $types,
+                            'units' => $units,
+                            'suppliers' => $suppliers,
+                            'material' => ['id' => $id],
+                            'form' => [
+                                'id' => $id,
+                                'name' => $name,
+                                'product_code' => $productCode,
+                                'material_type_id' => $typeId,
+                                'supplier_id' => $supplierId,
+                                'unit_id' => $unitId,
+                                'unit_cost' => $unitCost,
+                                'purchase_date' => $purchaseDate,
+                                'purchase_url' => $purchaseUrl,
+                                'min_stock' => $minStock,
+                            ],
+                            'product_code_conflict' => $existing,
+                        ]);
+                        return;
+                    }
+
+                    try {
+                        $existingId = (int) $existing['id'];
+                        $this->pdo->prepare(
+                            "UPDATE materials
+                             SET name = ?, product_code = ?, material_type_id = ?, supplier_id = ?, unit_id = ?, unit_cost = ?, purchase_date = ?, purchase_url = ?, min_stock = ?, updated_at = UTC_TIMESTAMP()
+                             WHERE id = ?"
+                        )->execute([$name, $productCode, $typeId, $supplierId, $unitId, $unitCost, $purchaseDate, $purchaseUrl, $minStock, $existingId]);
+
+                        Flash::set('success', 'Material suprascris.');
+                        $this->redirect('materials/edit', ['id' => $existingId]);
+                    } catch (\Throwable $e) {
+                        Flash::set('error', 'Eroare la suprascriere.');
+                        $this->redirect('materials/edit', ['id' => $id]);
+                    }
+                }
+            }
             if ($hasProductCode) {
                 $stmt = $this->pdo->prepare(
                     "UPDATE materials

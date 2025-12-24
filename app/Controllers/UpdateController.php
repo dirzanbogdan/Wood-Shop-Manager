@@ -669,6 +669,7 @@ final class UpdateController extends Controller
                 $this->ensureSettingsKey('currency', 'lei');
                 $this->ensureColumn('materials', 'purchase_url', "ALTER TABLE materials ADD COLUMN purchase_url VARCHAR(500) NULL");
                 $this->ensureColumn('materials', 'product_code', "ALTER TABLE materials ADD COLUMN product_code VARCHAR(80) NULL AFTER name");
+                $this->ensureMaterialsProductCodeUniqueIndex();
 
                 $this->pdo->commit();
             } catch (\Throwable $e) {
@@ -713,6 +714,45 @@ final class UpdateController extends Controller
         if (!$exists) {
             $this->pdo->exec($alterSql);
         }
+    }
+
+    private function ensureMaterialsProductCodeUniqueIndex(): void
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) AS c
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'materials' AND COLUMN_NAME = 'product_code'"
+        );
+        $stmt->execute();
+        $colExists = (int) (($stmt->fetch()['c'] ?? 0)) > 0;
+        if (!$colExists) {
+            return;
+        }
+
+        $idx = $this->pdo->prepare(
+            "SELECT COUNT(*) AS c
+             FROM INFORMATION_SCHEMA.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'materials' AND INDEX_NAME = 'materials_product_code_unique'"
+        );
+        $idx->execute();
+        $idxExists = (int) (($idx->fetch()['c'] ?? 0)) > 0;
+        if ($idxExists) {
+            return;
+        }
+
+        $dup = $this->pdo->query(
+            "SELECT 1
+             FROM materials
+             WHERE product_code IS NOT NULL
+             GROUP BY product_code
+             HAVING COUNT(*) > 1
+             LIMIT 1"
+        )->fetch();
+        if ($dup) {
+            return;
+        }
+
+        $this->pdo->exec("ALTER TABLE materials ADD UNIQUE KEY materials_product_code_unique (product_code)");
     }
 
     private function loadChangelog(): array

@@ -6,6 +6,7 @@
 - Input: normalizează și formele `-.23` → `-0.23`, `+.23` → `0.23`
 - Materie primă: câmp nou „Cod produs” în formular
 - Materie primă: buton icon pentru deschiderea „URL achizitie” din listă
+- Materie primă: „Cod produs” unic + opțiuni la conflict (suprascrie / schimbă codul)
 
 ## v2.22122025.003
 

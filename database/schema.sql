@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS materials (
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
+  UNIQUE KEY materials_product_code_unique (product_code),
   KEY materials_name_idx (name),
   KEY materials_archived_idx (is_archived),
   KEY materials_type_idx (material_type_id),
