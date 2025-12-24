@@ -83,7 +83,14 @@ final class Validator
         if ($raw === '') {
             return null;
         }
-        if (!preg_match('/^-?\d+(\.\d+)?$/', $raw)) {
+        if (str_starts_with($raw, '-.')) {
+            $raw = '-0' . substr($raw, 1);
+        } elseif (str_starts_with($raw, '.')) {
+            $raw = '0' . $raw;
+        } elseif (str_starts_with($raw, '+.')) {
+            $raw = '0' . substr($raw, 1);
+        }
+        if (!preg_match('/^[+-]?\d+(\.\d+)?$/', $raw)) {
             return null;
         }
         if ((float) $raw < $min) {

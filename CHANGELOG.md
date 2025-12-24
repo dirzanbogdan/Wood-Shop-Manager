@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.22122025.004
+
+- Input: acceptă valori zecimale de forma `.23` și normalizează la `0.23` (Excel-like)
+- Input: normalizează și formele `-.23` → `-0.23`, `+.23` → `0.23`
+
 ## v2.22122025.003
 
 - Install: setări regionale (currency/timezone/language) înainte de SuperAdmin
