@@ -16,6 +16,7 @@ class _ProductionStartPageState extends State<ProductionStartPage> {
   final _qtyCtrl = TextEditingController(text: '1');
   final _notesCtrl = TextEditingController();
   bool _loading = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -39,9 +40,16 @@ class _ProductionStartPageState extends State<ProductionStartPage> {
         setState(() {
           _products = list.cast<Map<String, dynamic>>();
           _productId = _products.isNotEmpty ? (_products.first['id'] as num?)?.toInt() : null;
+          _loadError = null;
         });
       }
-    } catch (_) {}
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _loadError = e.message);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadError = e.toString());
+    }
   }
 
   Future<void> _submit() async {
@@ -74,6 +82,11 @@ class _ProductionStartPageState extends State<ProductionStartPage> {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
+            if (_loadError != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(_loadError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ),
             InputDecorator(
               decoration: const InputDecoration(labelText: 'Produs'),
               child: DropdownButtonHideUnderline(

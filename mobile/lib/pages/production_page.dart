@@ -45,7 +45,9 @@ class _ProductionPageState extends State<ProductionPage> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return const Center(child: Text('Eroare la incarcare.'));
+              final err = snapshot.error;
+              final msg = err is ApiException ? err.message : err.toString();
+              return Center(child: Text('Eroare: $msg'));
             }
             final items = snapshot.data ?? const <Map<String, dynamic>>[];
             if (items.isEmpty) {

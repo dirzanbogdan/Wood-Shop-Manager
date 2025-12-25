@@ -63,7 +63,9 @@ class _StockPageState extends State<StockPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return const Center(child: Text('Eroare la incarcare.'));
+                  final err = snapshot.error;
+                  final msg = err is ApiException ? err.message : err.toString();
+                  return Center(child: Text('Eroare: $msg'));
                 }
                 final data = snapshot.data ?? {};
                 final matsBody = data['materials'] as Map<String, dynamic>;
@@ -117,4 +119,3 @@ class _StockPageState extends State<StockPage> {
     );
   }
 }
-
