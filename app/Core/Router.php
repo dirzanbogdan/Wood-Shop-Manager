@@ -34,6 +34,7 @@ final class Router
             'suppliers' => \App\Controllers\SuppliersController::class,
             'materialtypes' => \App\Controllers\MaterialTypesController::class,
             'categories' => \App\Controllers\ProductCategoriesController::class,
+            'api' => \App\Controllers\ApiController::class,
         ];
 
         if (!isset($map[$controllerName])) {
