@@ -11,16 +11,99 @@ use App\Core\Validator;
 
 final class ApiController extends Controller
 {
-    private function json(array $payload, int $status = 200): void
+    private ?int $bearerUserId = null;
+    private bool $bearerChecked = false;
+
+    private function baseMeta(array $meta = []): array
     {
+        $version = isset($this->config['app']['version']) ? (string) $this->config['app']['version'] : '';
+        return array_merge([
+            'version' => $version,
+            'utc' => gmdate('c'),
+        ], $meta);
+    }
+
+    private function corsHeaders(): void
+    {
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? trim((string) $_SERVER['HTTP_ORIGIN']) : '';
+        if ($origin === '') {
+            return;
+        }
+
+        $allowed = $this->config['api']['cors_allowed_origins'] ?? [];
+        if (!is_array($allowed) || !$allowed) {
+            return;
+        }
+
+        $allowed = array_values(array_filter(array_map('strval', $allowed), static fn ($v) => trim($v) !== ''));
+        if (!$allowed || !in_array($origin, $allowed, true)) {
+            return;
+        }
+
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
+
+        $allowCred = $this->config['api']['cors_allow_credentials'] ?? true;
+        if ($allowCred === true) {
+            header('Access-Control-Allow-Credentials: true');
+        }
+
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token, Authorization');
+        header('Access-Control-Max-Age: 600');
+    }
+
+    private function preflight(): void
+    {
+        $this->corsHeaders();
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            http_response_code(204);
+            header('Content-Length: 0');
+            exit;
+        }
+    }
+
+    private function sendJson(array $payload, int $status = 200): void
+    {
+        $this->corsHeaders();
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
         echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
-    private function jsonExit(array $payload, int $status = 200): void
+    private function ok($data = null, array $meta = [], int $status = 200): void
     {
-        $this->json($payload, $status);
+        $this->sendJson([
+            'ok' => true,
+            'data' => $data,
+            'error' => null,
+            'meta' => $this->baseMeta($meta),
+        ], $status);
+    }
+
+    private function okExit($data = null, array $meta = [], int $status = 200): void
+    {
+        $this->ok($data, $meta, $status);
+        exit;
+    }
+
+    private function failExit(string $message, int $status = 400, string $code = 'error', ?array $fields = null): void
+    {
+        $error = [
+            'code' => $code,
+            'message' => $message,
+        ];
+        if (is_array($fields)) {
+            $error['fields'] = $fields;
+        }
+
+        $this->sendJson([
+            'ok' => false,
+            'data' => null,
+            'error' => $error,
+            'meta' => $this->baseMeta(),
+        ], $status);
         exit;
     }
 
@@ -36,10 +119,178 @@ final class ApiController extends Controller
         return is_array($decoded) ? $decoded : [];
     }
 
+    private function getAuthorizationHeader(): string
+    {
+        $candidates = [
+            'HTTP_AUTHORIZATION',
+            'REDIRECT_HTTP_AUTHORIZATION',
+        ];
+        foreach ($candidates as $k) {
+            if (isset($_SERVER[$k]) && is_string($_SERVER[$k]) && trim($_SERVER[$k]) !== '') {
+                return trim((string) $_SERVER[$k]);
+            }
+        }
+        return '';
+    }
+
+    private function bearerToken(): string
+    {
+        $h = $this->getAuthorizationHeader();
+        if ($h === '') {
+            return '';
+        }
+        if (!preg_match('/^Bearer\s+(.+)$/i', $h, $m)) {
+            return '';
+        }
+        return trim((string) $m[1]);
+    }
+
+    private function tokenSecret(): string
+    {
+        $s = (string) ($this->config['security']['api_token_secret'] ?? '');
+        if (trim($s) !== '') {
+            return $s;
+        }
+        $csrfKey = (string) ($this->config['security']['csrf_key'] ?? '');
+        return preg_match('/^[0-9a-f]{64}$/i', $csrfKey) ? $csrfKey : '';
+    }
+
+    private function tokenTtlSeconds(): int
+    {
+        $days = (int) ($this->config['security']['api_token_ttl_days'] ?? 30);
+        if ($days < 1) {
+            $days = 1;
+        }
+        if ($days > 365) {
+            $days = 365;
+        }
+        return $days * 86400;
+    }
+
+    private function base64UrlEncode(string $raw): string
+    {
+        return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+    }
+
+    private function base64UrlDecode(string $b64url): string
+    {
+        $b64 = strtr($b64url, '-_', '+/');
+        $pad = strlen($b64) % 4;
+        if ($pad > 0) {
+            $b64 .= str_repeat('=', 4 - $pad);
+        }
+        $decoded = base64_decode($b64, true);
+        return is_string($decoded) ? $decoded : '';
+    }
+
+    private function issueBearerToken(int $userId): array
+    {
+        $secret = $this->tokenSecret();
+        if (trim($secret) === '') {
+            return ['ok' => false, 'message' => 'Token secret missing'];
+        }
+
+        $exp = time() + $this->tokenTtlSeconds();
+        $payload = json_encode([
+            'uid' => $userId,
+            'exp' => $exp,
+            'rnd' => bin2hex(random_bytes(8)),
+        ], JSON_UNESCAPED_SLASHES);
+        if (!is_string($payload) || $payload === '') {
+            return ['ok' => false, 'message' => 'Cannot create token'];
+        }
+
+        $payloadB64 = $this->base64UrlEncode($payload);
+        $sig = hash_hmac('sha256', $payloadB64, $secret, true);
+        $sigB64 = $this->base64UrlEncode($sig);
+        return [
+            'ok' => true,
+            'token' => $payloadB64 . '.' . $sigB64,
+            'expires_at' => gmdate('c', $exp),
+        ];
+    }
+
+    private function bearerUserId(): ?int
+    {
+        if ($this->bearerChecked) {
+            return $this->bearerUserId;
+        }
+        $this->bearerChecked = true;
+        $this->bearerUserId = null;
+
+        $token = $this->bearerToken();
+        if ($token === '') {
+            return null;
+        }
+
+        $secret = $this->tokenSecret();
+        if (trim($secret) === '') {
+            return null;
+        }
+
+        $parts = explode('.', $token, 2);
+        if (count($parts) !== 2) {
+            return null;
+        }
+        [$payloadB64, $sigB64] = $parts;
+        if ($payloadB64 === '' || $sigB64 === '') {
+            return null;
+        }
+
+        $sig = $this->base64UrlDecode($sigB64);
+        if ($sig === '') {
+            return null;
+        }
+        $expected = hash_hmac('sha256', $payloadB64, $secret, true);
+        if (!hash_equals($expected, $sig)) {
+            return null;
+        }
+
+        $payloadRaw = $this->base64UrlDecode($payloadB64);
+        if ($payloadRaw === '') {
+            return null;
+        }
+        $payload = json_decode($payloadRaw, true);
+        if (!is_array($payload)) {
+            return null;
+        }
+        $uid = isset($payload['uid']) ? (int) $payload['uid'] : 0;
+        $exp = isset($payload['exp']) ? (int) $payload['exp'] : 0;
+        if ($uid < 1 || $exp < 1 || time() > $exp) {
+            return null;
+        }
+
+        $this->bearerUserId = $uid;
+        return $uid;
+    }
+
+    private function setSessionUserFromId(int $userId): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT id, name, username, role, is_active FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch();
+        if (!$row || (int) $row['is_active'] !== 1) {
+            return false;
+        }
+
+        $_SESSION['user'] = [
+            'id' => (int) $row['id'],
+            'name' => (string) $row['name'],
+            'username' => (string) $row['username'],
+            'role' => (string) $row['role'],
+        ];
+        return true;
+    }
+
     private function requireApiAuth(): array
     {
         if (!Auth::check()) {
-            $this->jsonExit(['ok' => false, 'error' => 'Unauthorized'], 401);
+            $uid = $this->bearerUserId();
+            if ($uid !== null && $this->setSessionUserFromId($uid)) {
+                $u = Auth::user();
+                return is_array($u) ? $u : [];
+            }
+            $this->failExit('Unauthorized', 401, 'unauthorized');
         }
         $u = Auth::user();
         return is_array($u) ? $u : [];
@@ -50,12 +301,16 @@ final class ApiController extends Controller
         $u = Auth::user();
         $role = is_array($u) && isset($u['role']) ? (string) $u['role'] : '';
         if (!in_array($role, $roles, true)) {
-            $this->jsonExit(['ok' => false, 'error' => 'Forbidden'], 403);
+            $this->failExit('Forbidden', 403, 'forbidden');
         }
     }
 
     private function requireApiCsrf(array $input = []): void
     {
+        if ($this->bearerUserId() !== null) {
+            return;
+        }
+
         $csrfKey = (string) ($this->config['security']['csrf_key'] ?? '');
         if ($csrfKey === '') {
             return;
@@ -64,7 +319,7 @@ final class ApiController extends Controller
         $header = isset($_SERVER['HTTP_X_CSRF_TOKEN']) ? trim((string) $_SERVER['HTTP_X_CSRF_TOKEN']) : '';
         $token = $header !== '' ? $header : (isset($input[$csrfKey]) ? (string) $input[$csrfKey] : '');
         if (!CSRF::verify($csrfKey, $token !== '' ? $token : null)) {
-            $this->jsonExit(['ok' => false, 'error' => 'Invalid CSRF'], 400);
+            $this->failExit('Invalid CSRF', 400, 'invalid_csrf');
         }
     }
 
@@ -81,60 +336,98 @@ final class ApiController extends Controller
 
     public function v1Ping(): void
     {
+        $this->preflight();
         $u = Auth::user();
-        $this->json([
-            'ok' => true,
-            'version' => (string) ($this->config['app']['version'] ?? ''),
+        $this->ok([
             'user' => is_array($u) ? $u : null,
-            'utc' => gmdate('c'),
         ]);
     }
 
     public function v1Csrf(): void
     {
+        $this->preflight();
         $csrfKey = (string) ($this->config['security']['csrf_key'] ?? '');
         if ($csrfKey === '') {
-            $this->json(['ok' => true, 'csrf_key' => null, 'csrf_token' => null]);
+            $this->ok(['csrf_key' => null, 'csrf_token' => null]);
             return;
         }
 
-        $this->json([
-            'ok' => true,
-            'csrf_key' => $csrfKey,
-            'csrf_token' => CSRF::token($csrfKey),
-        ]);
+        $this->ok(['csrf_key' => $csrfKey, 'csrf_token' => CSRF::token($csrfKey)]);
     }
 
     public function v1Login(): void
     {
+        $this->preflight();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->jsonExit(['ok' => false, 'error' => 'Method not allowed'], 405);
+            $this->failExit('Method not allowed', 405, 'method_not_allowed');
         }
 
         $input = $this->inputJson();
         $username = Validator::requiredString($input, 'username', 1, 60);
         $password = Validator::requiredString($input, 'password', (int) ($this->config['security']['password_min_length'] ?? 12), 255);
         if ($username === null || $password === null) {
-            $this->jsonExit(['ok' => false, 'error' => 'Invalid credentials'], 400);
+            $this->failExit('Invalid credentials', 400, 'invalid_request');
         }
 
         if (!Auth::attempt($this->pdo, $username, $password)) {
-            $this->jsonExit(['ok' => false, 'error' => 'Unauthorized'], 401);
+            $this->failExit('Unauthorized', 401, 'unauthorized');
         }
 
         $csrfKey = (string) ($this->config['security']['csrf_key'] ?? '');
-        $this->json([
-            'ok' => true,
+        $this->ok([
             'user' => Auth::user(),
             'csrf_key' => $csrfKey !== '' ? $csrfKey : null,
             'csrf_token' => $csrfKey !== '' ? CSRF::token($csrfKey) : null,
+            'auth' => ['mode' => 'cookie'],
+        ]);
+    }
+
+    public function v1TokenLogin(): void
+    {
+        $this->preflight();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->failExit('Method not allowed', 405, 'method_not_allowed');
+        }
+
+        $input = $this->inputJson();
+        $username = Validator::requiredString($input, 'username', 1, 60);
+        $password = Validator::requiredString($input, 'password', (int) ($this->config['security']['password_min_length'] ?? 12), 255);
+        if ($username === null || $password === null) {
+            $this->failExit('Invalid credentials', 400, 'invalid_request');
+        }
+
+        if (!Auth::attempt($this->pdo, $username, $password)) {
+            $this->failExit('Unauthorized', 401, 'unauthorized');
+        }
+
+        $u = Auth::user();
+        $uid = is_array($u) && isset($u['id']) ? (int) $u['id'] : 0;
+        if ($uid < 1) {
+            $this->failExit('Unauthorized', 401, 'unauthorized');
+        }
+
+        $token = $this->issueBearerToken($uid);
+        if (($token['ok'] ?? false) !== true) {
+            $this->failExit('Token error', 500, 'token_error');
+        }
+
+        $csrfKey = (string) ($this->config['security']['csrf_key'] ?? '');
+        $this->ok([
+            'user' => $u,
+            'token' => (string) ($token['token'] ?? ''),
+            'token_type' => 'Bearer',
+            'expires_at' => (string) ($token['expires_at'] ?? ''),
+            'csrf_key' => $csrfKey !== '' ? $csrfKey : null,
+            'csrf_token' => $csrfKey !== '' ? CSRF::token($csrfKey) : null,
+            'auth' => ['mode' => 'bearer'],
         ]);
     }
 
     public function v1Logout(): void
     {
+        $this->preflight();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->jsonExit(['ok' => false, 'error' => 'Method not allowed'], 405);
+            $this->failExit('Method not allowed', 405, 'method_not_allowed');
         }
 
         $input = $this->inputJson();
@@ -142,17 +435,37 @@ final class ApiController extends Controller
         $this->requireApiCsrf($input);
 
         Auth::logout();
-        $this->json(['ok' => true]);
+        $this->ok(null);
     }
 
     public function v1Me(): void
     {
+        $this->preflight();
         $u = $this->requireApiAuth();
-        $this->json(['ok' => true, 'user' => $u]);
+        $this->ok(['user' => $u]);
+    }
+
+    private function listLimitOffset(): array
+    {
+        $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 50;
+        if ($limit < 1) {
+            $limit = 50;
+        }
+        if ($limit > 200) {
+            $limit = 200;
+        }
+
+        $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
+        if ($offset < 0) {
+            $offset = 0;
+        }
+
+        return [$limit, $offset];
     }
 
     public function v1Materials(): void
     {
+        $this->preflight();
         $this->requireApiAuth();
 
         $showArchived = isset($_GET['archived']) && $_GET['archived'] === '1';
@@ -175,17 +488,23 @@ final class ApiController extends Controller
             $select .= " AND m.name LIKE :q";
             $params['q'] = '%' . $q . '%';
         }
-        $select .= " ORDER BY m.name ASC";
+        [$limit, $offset] = $this->listLimitOffset();
+        $select .= " ORDER BY m.name ASC LIMIT " . (int) $limit . " OFFSET " . (int) $offset;
 
         $stmt = $this->pdo->prepare($select);
         $stmt->execute($params);
         $materials = $stmt->fetchAll();
 
-        $this->json(['ok' => true, 'materials' => $materials]);
+        $this->ok(['materials' => $materials], [
+            'limit' => $limit,
+            'offset' => $offset,
+            'returned' => is_array($materials) ? count($materials) : 0,
+        ]);
     }
 
     public function v1Products(): void
     {
+        $this->preflight();
         $this->requireApiAuth();
 
         $q = isset($_GET['q']) && is_string($_GET['q']) ? trim((string) $_GET['q']) : '';
@@ -200,29 +519,35 @@ final class ApiController extends Controller
             $sql .= " AND (p.name LIKE :q OR p.sku LIKE :q)";
             $params['q'] = '%' . $q . '%';
         }
-        $sql .= " ORDER BY p.name ASC";
+        [$limit, $offset] = $this->listLimitOffset();
+        $sql .= " ORDER BY p.name ASC LIMIT " . (int) $limit . " OFFSET " . (int) $offset;
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         $products = $stmt->fetchAll();
 
-        $this->json(['ok' => true, 'products' => $products]);
+        $this->ok(['products' => $products], [
+            'limit' => $limit,
+            'offset' => $offset,
+            'returned' => is_array($products) ? count($products) : 0,
+        ]);
     }
 
     public function v1Bom(): void
     {
+        $this->preflight();
         $this->requireApiAuth();
 
         $productId = isset($_GET['product_id']) ? (int) $_GET['product_id'] : 0;
         if ($productId < 1) {
-            $this->jsonExit(['ok' => false, 'error' => 'Invalid product_id'], 400);
+            $this->failExit('Invalid product_id', 400, 'invalid_request');
         }
 
         $p = $this->pdo->prepare("SELECT id, name, sku, manpower_hours FROM products WHERE id = ? LIMIT 1");
         $p->execute([$productId]);
         $product = $p->fetch();
         if (!$product) {
-            $this->jsonExit(['ok' => false, 'error' => 'Not found'], 404);
+            $this->failExit('Not found', 404, 'not_found');
         }
 
         $materials = $this->pdo->prepare(
@@ -244,8 +569,7 @@ final class ApiController extends Controller
         );
         $machines->execute([$productId]);
 
-        $this->json([
-            'ok' => true,
+        $this->ok([
             'product' => $product,
             'materials' => $materials->fetchAll(),
             'machines' => $machines->fetchAll(),
@@ -254,9 +578,11 @@ final class ApiController extends Controller
 
     public function v1ProductionOrders(): void
     {
+        $this->preflight();
         $this->requireApiAuth();
 
-        $orders = $this->pdo->query(
+        [$limit, $offset] = $this->listLimitOffset();
+        $ordersStmt = $this->pdo->query(
             "SELECT po.id, po.qty, po.status, po.started_at, po.completed_at, p.name AS product_name, p.sku, u.name AS operator_name,
                     pc.total_cost, pc.cost_per_unit
              FROM production_orders po
@@ -264,16 +590,22 @@ final class ApiController extends Controller
              JOIN users u ON u.id = po.operator_user_id
              LEFT JOIN production_costs pc ON pc.production_order_id = po.id
              ORDER BY po.started_at DESC
-             LIMIT 200"
-        )->fetchAll();
+             LIMIT " . (int) $limit . " OFFSET " . (int) $offset
+        );
+        $orders = $ordersStmt->fetchAll();
 
-        $this->json(['ok' => true, 'orders' => $orders]);
+        $this->ok(['orders' => $orders], [
+            'limit' => $limit,
+            'offset' => $offset,
+            'returned' => is_array($orders) ? count($orders) : 0,
+        ]);
     }
 
     public function v1ProductionStart(): void
     {
+        $this->preflight();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->jsonExit(['ok' => false, 'error' => 'Method not allowed'], 405);
+            $this->failExit('Method not allowed', 405, 'method_not_allowed');
         }
 
         $input = $this->inputJson();
@@ -284,19 +616,19 @@ final class ApiController extends Controller
         $qty = Validator::requiredInt($input, 'qty', 1, 1000000);
         $notes = Validator::optionalString($input, 'notes', 2000);
         if ($productId === null || $qty === null) {
-            $this->jsonExit(['ok' => false, 'error' => 'Invalid input'], 400);
+            $this->failExit('Invalid input', 400, 'invalid_request');
         }
 
         $product = $this->pdo->prepare("SELECT id, name FROM products WHERE id = ? AND is_active = 1 LIMIT 1");
         $product->execute([$productId]);
         $p = $product->fetch();
         if (!$p) {
-            $this->jsonExit(['ok' => false, 'error' => 'Product not found'], 404);
+            $this->failExit('Product not found', 404, 'not_found');
         }
 
         $check = $this->validateRecipeForQty($productId, $qty);
         if ($check['ok'] !== true) {
-            $this->jsonExit(['ok' => false, 'error' => (string) $check['message']], 400);
+            $this->failExit((string) $check['message'], 400, 'invalid_request');
         }
 
         $stmt = $this->pdo->prepare(
@@ -305,13 +637,14 @@ final class ApiController extends Controller
         );
         $stmt->execute([$productId, $qty, (int) ($user['id'] ?? 0), $notes]);
 
-        $this->json(['ok' => true, 'production_order_id' => (int) $this->pdo->lastInsertId()]);
+        $this->ok(['production_order_id' => (int) $this->pdo->lastInsertId()], [], 201);
     }
 
     public function v1ProductionFinalize(): void
     {
+        $this->preflight();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->jsonExit(['ok' => false, 'error' => 'Method not allowed'], 405);
+            $this->failExit('Method not allowed', 405, 'method_not_allowed');
         }
 
         $input = $this->inputJson();
@@ -321,7 +654,7 @@ final class ApiController extends Controller
 
         $orderId = Validator::requiredInt($input, 'production_order_id', 1);
         if ($orderId === null) {
-            $this->jsonExit(['ok' => false, 'error' => 'Invalid production_order_id'], 400);
+            $this->failExit('Invalid production_order_id', 400, 'invalid_request');
         }
 
         $this->pdo->beginTransaction();
@@ -424,33 +757,41 @@ final class ApiController extends Controller
             $this->pdo->commit();
         } catch (\Throwable $e) {
             $this->pdo->rollBack();
-            $this->jsonExit(['ok' => false, 'error' => $e->getMessage()], 400);
+            $this->failExit($e->getMessage(), 400, 'invalid_request');
         }
 
-        $this->json(['ok' => true]);
+        $this->ok(null);
     }
 
     public function v1Sales(): void
     {
+        $this->preflight();
         $this->requireApiAuth();
 
-        $sales = $this->pdo->query(
+        [$limit, $offset] = $this->listLimitOffset();
+        $salesStmt = $this->pdo->query(
             "SELECT s.id, s.product_id, p.name AS product_name, p.sku, s.qty, s.sale_price, s.sold_at, s.customer_name, s.channel,
                     s.user_id, u.name AS user_name
              FROM sales s
              JOIN products p ON p.id = s.product_id
              JOIN users u ON u.id = s.user_id
              ORDER BY s.sold_at DESC
-             LIMIT 200"
-        )->fetchAll();
+             LIMIT " . (int) $limit . " OFFSET " . (int) $offset
+        );
+        $sales = $salesStmt->fetchAll();
 
-        $this->json(['ok' => true, 'sales' => $sales]);
+        $this->ok(['sales' => $sales], [
+            'limit' => $limit,
+            'offset' => $offset,
+            'returned' => is_array($sales) ? count($sales) : 0,
+        ]);
     }
 
     public function v1SalesCreate(): void
     {
+        $this->preflight();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->jsonExit(['ok' => false, 'error' => 'Method not allowed'], 405);
+            $this->failExit('Method not allowed', 405, 'method_not_allowed');
         }
 
         $input = $this->inputJson();
@@ -466,7 +807,7 @@ final class ApiController extends Controller
         $channel = Validator::optionalString($input, 'channel', 80);
 
         if ($productId === null || $qty === null || $salePrice === null) {
-            $this->jsonExit(['ok' => false, 'error' => 'Invalid input'], 400);
+            $this->failExit('Invalid input', 400, 'invalid_request');
         }
 
         if ($salePriceCurrency === null || $salePriceCurrency === '' || !in_array($salePriceCurrency, ['lei', 'usd', 'eur'], true)) {
@@ -502,10 +843,10 @@ final class ApiController extends Controller
         } catch (\Throwable $e) {
             $this->pdo->rollBack();
             $msg = $e->getMessage() === 'Stoc insuficient' ? 'Stoc insuficient.' : 'Nu se poate salva vanzarea.';
-            $this->jsonExit(['ok' => false, 'error' => $msg], 400);
+            $this->failExit($msg, 400, 'invalid_request');
         }
 
-        $this->json(['ok' => true]);
+        $this->ok(null, [], 201);
     }
 
     private function validateRecipeForQty(int $productId, int $qty): array

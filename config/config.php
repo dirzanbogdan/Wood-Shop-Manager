@@ -22,6 +22,12 @@ $base = [
     'security' => [
         'csrf_key' => 'csrf_token',
         'password_min_length' => 12,
+        'api_token_secret' => '',
+        'api_token_ttl_days' => 30,
+    ],
+    'api' => [
+        'cors_allowed_origins' => [],
+        'cors_allow_credentials' => true,
     ],
     'update' => [
         'git_branch' => 'main',
