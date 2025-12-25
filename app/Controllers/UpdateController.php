@@ -52,6 +52,7 @@ final class UpdateController extends Controller
         $currentVersion = isset($this->config['app']['version']) ? (string) $this->config['app']['version'] : '';
         $git = $this->gitInfo();
         $changelog = $this->loadChangelog();
+        $updateBranch = $this->updateGitBranch();
 
         $this->render('update/index', [
             'title' => 'Update',
@@ -60,7 +61,23 @@ final class UpdateController extends Controller
             'current_version' => $currentVersion,
             'git_info' => $git,
             'changelog' => $changelog,
+            'update_git_branch' => $updateBranch,
         ]);
+    }
+
+    private function updateGitBranch(): string
+    {
+        $branch = '';
+        if (isset($this->config['update']) && is_array($this->config['update']) && isset($this->config['update']['git_branch'])) {
+            $branch = trim((string) $this->config['update']['git_branch']);
+        }
+        if ($branch === '') {
+            $branch = 'main';
+        }
+        if (!preg_match('/^[A-Za-z0-9._\\/-]{1,120}$/', $branch)) {
+            $branch = 'main';
+        }
+        return $branch;
     }
 
     private function dumpDatabaseToDownload(): void
@@ -300,6 +317,7 @@ final class UpdateController extends Controller
             return ['ok' => false, 'message' => 'Proiectul nu pare clonat cu git pe server.'];
         }
         $env = $this->gitEnv($root);
+        $allowedBranch = $this->updateGitBranch();
 
         $logs = [];
         $run = function (array $args, string $label) use ($root, $env, &$logs): array {
@@ -314,13 +332,28 @@ final class UpdateController extends Controller
             return $res;
         };
 
+        $branchRes = $run(['rev-parse', '--abbrev-ref', 'HEAD'], 'git rev-parse --abbrev-ref HEAD');
+        $currentBranch = trim((string) ($branchRes['out'] ?? ''));
+        if ($currentBranch === '' || $currentBranch === 'HEAD') {
+            return [
+                'ok' => false,
+                'message' => 'Update blocat: repository in stare "detached HEAD". Comuta pe branch ' . $allowedBranch . ' si reincearca.',
+            ];
+        }
+        if ($currentBranch !== $allowedBranch) {
+            return [
+                'ok' => false,
+                'message' => 'Update blocat: branch curent `' . $currentBranch . '`. Permis doar `' . $allowedBranch . '` pentru `git pull` din UI.',
+            ];
+        }
+
         $beforeHead = $run(['rev-parse', '--short', 'HEAD'], 'git rev-parse --short HEAD (before)');
         $beforeHeadShort = '';
         if (preg_match('/^[0-9a-f]{7,40}$/i', (string) ($beforeHead['out'] ?? ''))) {
             $beforeHeadShort = substr((string) $beforeHead['out'], 0, 7);
         }
 
-        $pull = $run(['pull', '--ff-only'], 'git pull --ff-only');
+        $pull = $run(['pull', '--ff-only', 'origin', $allowedBranch], 'git pull --ff-only origin ' . $allowedBranch);
         $out = (string) ($pull['out'] ?? '');
         $err = (string) ($pull['err'] ?? '');
         $msg = trim($out !== '' ? $out : $err);
@@ -338,7 +371,7 @@ final class UpdateController extends Controller
         $ok = ((($pull['code'] ?? 1) === 0) || $isOkByOutput) && !$hasHardFailure;
         if (!$ok && preg_match('/dubious ownership|safe\.directory/i', $combined)) {
             $run(['config', '--global', '--add', 'safe.directory', $root], 'git config --global --add safe.directory');
-            $pull2 = $run(['pull', '--ff-only'], 'git pull --ff-only (after safe.directory)');
+            $pull2 = $run(['pull', '--ff-only', 'origin', $allowedBranch], 'git pull --ff-only origin ' . $allowedBranch . ' (after safe.directory)');
             $out = (string) ($pull2['out'] ?? '');
             $err = (string) ($pull2['err'] ?? '');
             $combined = trim($out . "\n" . $err);
@@ -357,7 +390,7 @@ final class UpdateController extends Controller
         ) {
             $cfg = $run(['config', '--local', 'core.logAllRefUpdates', 'false'], 'git config --local core.logAllRefUpdates false');
             if (($cfg['code'] ?? 1) === 0) {
-                $pullFix = $run(['pull', '--ff-only'], 'git pull --ff-only (after reflog off)');
+                $pullFix = $run(['pull', '--ff-only', 'origin', $allowedBranch], 'git pull --ff-only origin ' . $allowedBranch . ' (after reflog off)');
                 $out = (string) ($pullFix['out'] ?? '');
                 $err = (string) ($pullFix['err'] ?? '');
                 $combined = trim($out . "\n" . $err);
@@ -376,7 +409,7 @@ final class UpdateController extends Controller
             && preg_match('/Your local changes to the following files would be overwritten by merge/i', $combined)
         ) {
             $reset = $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (auto)');
-            $pull3 = $run(['pull', '--ff-only'], 'git pull --ff-only (after reset --hard)');
+            $pull3 = $run(['pull', '--ff-only', 'origin', $allowedBranch], 'git pull --ff-only origin ' . $allowedBranch . ' (after reset --hard)');
             $out = (string) ($pull3['out'] ?? '');
             $err = (string) ($pull3['err'] ?? '');
             $combined = trim($out . "\n" . $err);
@@ -451,7 +484,8 @@ final class UpdateController extends Controller
         $zipPath = $dir . DIRECTORY_SEPARATOR . 'update.zip';
         $extractDir = $dir . DIRECTORY_SEPARATOR . 'extract';
 
-        $url = 'https://github.com/dirzanbogdan/Wood-Shop-Manager/archive/refs/heads/main.zip';
+        $branch = $this->updateGitBranch();
+        $url = 'https://github.com/dirzanbogdan/Wood-Shop-Manager/archive/refs/heads/' . rawurlencode($branch) . '.zip';
         $dl = $this->downloadFile($url, $zipPath);
         if (!$dl['ok']) {
             $this->deleteTree($dir);

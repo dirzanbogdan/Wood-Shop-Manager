@@ -13,6 +13,9 @@ $canShell = $gitAvailable && (($git_info['can_shell'] ?? false) === true);
   <?php if ($gitAvailable && ($git_info['branch'] ?? '') !== ''): ?>
     <div class="muted">Branch: <?= $esc((string) $git_info['branch']) ?></div>
   <?php endif; ?>
+  <?php if (isset($update_git_branch) && is_string($update_git_branch) && trim($update_git_branch) !== ''): ?>
+    <div class="muted">Update branch (UI): <?= $esc((string) $update_git_branch) ?></div>
+  <?php endif; ?>
 </div>
 
 <div class="grid" style="margin-top: 12px">

@@ -23,6 +23,9 @@ $base = [
         'csrf_key' => 'csrf_token',
         'password_min_length' => 12,
     ],
+    'update' => [
+        'git_branch' => 'main',
+    ],
 ];
 
 $localPath = __DIR__ . '/local.php';
