@@ -17,6 +17,13 @@ Acest fisier descrie modificarile si modul de testare pentru integrarea DEV (API
   - Pentru request-urile `POST` care modifica date, trimite `X-CSRF-Token: <token>`
   - Alternativ, trimite in body JSON campul `csrf_token` (cheia este configurabila prin `security.csrf_key`)
 
+### CORS (pentru Flutter Web)
+- CORS este controlat din `config/config.php`:
+  - `api.cors_allowed_origins`
+  - `api.cors_allow_credentials`
+- Pentru test rapid in DEV este permis wildcard `*` (credidentialele sunt dezactivate automat).
+- Pentru productie seteaza origin-uri explicite (ex: `https://app.example.com`) si evita `*`.
+
 ### Exemplu (curl)
 - Login (salveaza cookie + extrage token CSRF din raspuns):
   - `curl -s -c cookies.txt -H "Content-Type: application/json" -d "{\"username\":\"<user>\",\"password\":\"<pass>\"}" "http://127.0.0.1:8000/?r=api/v1Login"`
@@ -32,3 +39,7 @@ Acest fisier descrie modificarile si modul de testare pentru integrarea DEV (API
 - Din UI, actiunea `git pull` este permisa doar daca branch-ul curent este exact cel configurat.
 - Daca repo este in `detached HEAD`, update-ul este blocat.
 
+## Testare Flutter (MVP)
+- Seteaza `SessionStore.getBaseUrl()` la domeniul corect (ex: `https://wsmdev.greensh3ll.com` sau `http://127.0.0.1:8000`).
+- Daca instanta e servita din sub-folder, `baseUrl` trebuie sa includa path-ul (ex: `http://127.0.0.1:8000/public`).
+- Pentru Flutter Web (Chrome) CORS trebuie sa fie activ pe server; altfel vei vedea `ClientException: Failed to fetch`.

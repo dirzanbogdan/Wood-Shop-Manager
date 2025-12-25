@@ -26,8 +26,8 @@ $base = [
         'api_token_ttl_days' => 30,
     ],
     'api' => [
-        'cors_allowed_origins' => [],
-        'cors_allow_credentials' => true,
+        'cors_allowed_origins' => ['*'],
+        'cors_allow_credentials' => false,
     ],
     'update' => [
         'git_branch' => 'main',

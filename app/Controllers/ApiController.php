@@ -36,14 +36,24 @@ final class ApiController extends Controller
         }
 
         $allowed = array_values(array_filter(array_map('strval', $allowed), static fn ($v) => trim($v) !== ''));
-        if (!$allowed || !in_array($origin, $allowed, true)) {
+        if (!$allowed) {
             return;
         }
 
-        header('Access-Control-Allow-Origin: ' . $origin);
-        header('Vary: Origin');
+        $allowAll = in_array('*', $allowed, true);
+        if (!$allowAll && !in_array($origin, $allowed, true)) {
+            return;
+        }
+
+        header('Access-Control-Allow-Origin: ' . ($allowAll ? '*' : $origin));
+        if (!$allowAll) {
+            header('Vary: Origin');
+        }
 
         $allowCred = $this->config['api']['cors_allow_credentials'] ?? true;
+        if ($allowAll) {
+            $allowCred = false;
+        }
         if ($allowCred === true) {
             header('Access-Control-Allow-Credentials: true');
         }

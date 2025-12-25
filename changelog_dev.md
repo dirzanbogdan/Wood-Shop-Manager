@@ -1,5 +1,13 @@
 # Changelog (DEV)
 
+## 2025-12-26
+
+### Modificat
+- API: CORS permite wildcard `*` (pentru test rapid Flutter Web)
+- Flutter: afiseaza erori utile cand serverul intoarce non-JSON / CORS block
+- Flutter: pastreaza path-ul din `baseUrl` (ex: `.../public`)
+- Flutter: extins `SessionStore` cu cookie + CSRF (pregatire pentru fallback pe sesiune)
+
 ## 2025-12-25
 
 ### Adaugat
