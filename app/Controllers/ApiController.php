@@ -59,7 +59,7 @@ final class ApiController extends Controller
         }
 
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token, Authorization');
+        header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token, Authorization, X-Authorization, X-Access-Token');
         header('Access-Control-Max-Age: 600');
     }
 
@@ -134,6 +134,10 @@ final class ApiController extends Controller
         $candidates = [
             'HTTP_AUTHORIZATION',
             'REDIRECT_HTTP_AUTHORIZATION',
+            'HTTP_X_AUTHORIZATION',
+            'REDIRECT_HTTP_X_AUTHORIZATION',
+            'HTTP_X_ACCESS_TOKEN',
+            'REDIRECT_HTTP_X_ACCESS_TOKEN',
         ];
         foreach ($candidates as $k) {
             if (isset($_SERVER[$k]) && is_string($_SERVER[$k]) && trim($_SERVER[$k]) !== '') {
@@ -149,10 +153,10 @@ final class ApiController extends Controller
         if ($h === '') {
             return '';
         }
-        if (!preg_match('/^Bearer\s+(.+)$/i', $h, $m)) {
-            return '';
+        if (preg_match('/^Bearer\s+(.+)$/i', $h, $m)) {
+            return trim((string) $m[1]);
         }
-        return trim((string) $m[1]);
+        return trim($h);
     }
 
     private function tokenSecret(): string
