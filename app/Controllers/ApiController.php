@@ -122,7 +122,13 @@ final class ApiController extends Controller
             $this->jsonExit(['ok' => false, 'error' => 'Unauthorized'], 401);
         }
 
-        $this->json(['ok' => true, 'user' => Auth::user()]);
+        $csrfKey = (string) ($this->config['security']['csrf_key'] ?? '');
+        $this->json([
+            'ok' => true,
+            'user' => Auth::user(),
+            'csrf_key' => $csrfKey !== '' ? $csrfKey : null,
+            'csrf_token' => $csrfKey !== '' ? CSRF::token($csrfKey) : null,
+        ]);
     }
 
     public function v1Logout(): void
@@ -562,4 +568,3 @@ final class ApiController extends Controller
         return preg_match('/^-?\d+(\.\d+)?$/', $v) ? $v : $fallback;
     }
 }
-
