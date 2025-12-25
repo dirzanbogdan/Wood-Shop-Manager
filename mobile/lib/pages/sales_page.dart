@@ -44,7 +44,7 @@ class _SalesPageState extends State<SalesPage> {
       if (list is List) {
         setState(() {
           _products = list.cast<Map<String, dynamic>>();
-          _productId = _products.isNotEmpty ? (_products.first['id'] as num?)?.toInt() : null;
+          _productId = _products.isNotEmpty ? apiInt(_products.first['id'], fallback: 0) : null;
           _loadError = null;
         });
       }
@@ -109,7 +109,7 @@ class _SalesPageState extends State<SalesPage> {
                 items: _products
                     .map(
                       (p) => DropdownMenuItem<int>(
-                        value: (p['id'] as num?)?.toInt(),
+                        value: apiInt(p['id'], fallback: 0),
                         child: Text((p['name'] ?? '').toString()),
                       ),
                     )

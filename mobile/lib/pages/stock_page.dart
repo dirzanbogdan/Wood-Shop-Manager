@@ -94,7 +94,7 @@ class _StockPageState extends State<StockPage> {
                       title: Text('Produse (${prods.length})'),
                       children: prods.map((p) {
                         final pp = p as Map<String, dynamic>;
-                        final id = (pp['id'] as num?)?.toInt() ?? 0;
+                        final id = apiInt(pp['id']);
                         return ListTile(
                           title: Text((pp['name'] ?? '').toString()),
                           subtitle: Text(

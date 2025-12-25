@@ -4,6 +4,21 @@ import 'package:http/http.dart' as http;
 
 import 'session_store.dart';
 
+int apiInt(dynamic v, {int fallback = 0}) {
+  if (v == null) return fallback;
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  if (v is String) {
+    final t = v.trim();
+    if (t.isEmpty) return fallback;
+    final i = int.tryParse(t);
+    if (i != null) return i;
+    final d = double.tryParse(t.replaceAll(',', '.'));
+    if (d != null) return d.toInt();
+  }
+  return fallback;
+}
+
 class ApiException implements Exception {
   ApiException(this.message, {this.code, this.status});
   final String message;

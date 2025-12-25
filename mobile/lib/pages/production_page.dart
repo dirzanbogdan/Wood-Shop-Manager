@@ -64,7 +64,7 @@ class _ProductionPageState extends State<ProductionPage> {
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, idx) {
                 final o = items[idx];
-                final id = (o['id'] as num?)?.toInt() ?? 0;
+                final id = apiInt(o['id']);
                 final status = (o['status'] ?? '').toString();
                 final title = (o['product_name'] ?? '').toString();
                 final qty = (o['qty'] ?? '').toString();
