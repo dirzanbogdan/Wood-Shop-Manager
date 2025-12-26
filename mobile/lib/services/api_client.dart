@@ -51,10 +51,10 @@ class ApiClient {
     final def = Uri.tryParse(SessionStore.defaultBaseUrl)?.host ?? '';
     if (def.isEmpty) return null;
     if (host.toLowerCase() == def.toLowerCase()) return null;
-    final normalizedHost = host.toLowerCase().replaceAll('i', 'l');
-    final normalizedDef = def.toLowerCase().replaceAll('i', 'l');
+    final normalizedHost = host.toLowerCase().replaceAll(RegExp(r'[i1]'), 'l');
+    final normalizedDef = def.toLowerCase().replaceAll(RegExp(r'[i1]'), 'l');
     if (normalizedHost == normalizedDef) {
-      return 'Posibil typo (litera I vs l). Domeniu asteptat: `$def`.';
+      return 'Posibil typo (I/1 vs l). Domeniu asteptat: `$def`.';
     }
     return null;
   }

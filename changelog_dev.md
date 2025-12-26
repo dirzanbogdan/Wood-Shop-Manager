@@ -17,7 +17,8 @@
 - Mobile: refresh UI/UX (tema color, card-uri, formular login)
 - Mobile: card "Stocuri critice" in pagina Stoc (materiale sub min + produse fara stoc)
 - Mobile: validare/normalizare Base URL + mesaj mai clar pentru erori DNS la login
-- Versiuni mobile: `1.0.6+7` (server `config/config.php` + APK `pubspec.yaml`)
+- Mobile: sanitize Base URL (fara backticks/spatii) + autocorectie typo I/1 vs l pentru domeniu
+- Versiuni mobile: `1.0.9+10` (server `config/config.php` + APK `pubspec.yaml`)
 
 ## 2025-12-25
 

@@ -16,7 +16,11 @@ class SessionStore {
   SharedPreferences? _prefs;
 
   static String? normalizeBaseUrl(String input) {
-    final raw = input.trim();
+    var raw = input.trim();
+    if (raw.isEmpty) return null;
+
+    raw = raw.replaceAll(RegExp("^[`\"'<\\s]+"), '');
+    raw = raw.replaceAll(RegExp("[`\"'>\\s]+\$"), '');
     if (raw.isEmpty) return null;
 
     var candidate = raw;
@@ -34,10 +38,24 @@ class SessionStore {
 
     final uri = Uri.tryParse(candidate);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
+    final def = Uri.tryParse(defaultBaseUrl);
+    final defHost = def?.host ?? '';
+    final normalizedHost = uri.host.toLowerCase().replaceAll(
+      RegExp(r'[i1]'),
+      'l',
+    );
+    final normalizedDefHost = defHost.toLowerCase().replaceAll(
+      RegExp(r'[i1]'),
+      'l',
+    );
+    final correctedHost =
+        (defHost.isNotEmpty && normalizedHost == normalizedDefHost)
+        ? defHost
+        : uri.host;
     final cleaned = Uri(
       scheme: uri.scheme,
       userInfo: uri.userInfo,
-      host: uri.host,
+      host: correctedHost,
       port: uri.hasPort ? uri.port : null,
       path: uri.path,
     );
