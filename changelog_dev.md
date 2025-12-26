@@ -14,7 +14,8 @@
 - Mobile: camp parola cu show/hide si afisare temporara la tastare
 - Mobile: autofill pentru username/parola + salvare in password manager dupa login
 - Mobile: login cu amprenta (biometric) dupa primul login cu user/parola
-- Versiuni mobile: `1.0.2+3` (server `config/config.php` + APK `pubspec.yaml`)
+- Mobile: refresh UI/UX (tema color, card-uri, formular login)
+- Versiuni mobile: `1.0.3+4` (server `config/config.php` + APK `pubspec.yaml`)
 
 ## 2025-12-25
 

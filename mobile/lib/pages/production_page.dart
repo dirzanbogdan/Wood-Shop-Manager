@@ -58,10 +58,9 @@ class _ProductionPageState extends State<ProductionPage> {
                 ],
               );
             }
-            return ListView.separated(
-              padding: const EdgeInsets.all(8),
+            return ListView.builder(
+              padding: const EdgeInsets.all(12),
               itemCount: items.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, idx) {
                 final o = items[idx];
                 final id = apiInt(o['id']);
@@ -71,29 +70,34 @@ class _ProductionPageState extends State<ProductionPage> {
                 final started = (o['started_at'] ?? '').toString();
                 final canFinalize = status == 'Pornita' && id > 0;
 
-                return ListTile(
-                  title: Text(title),
-                  subtitle: Text('Qty $qty • $status • $started'),
-                  trailing: canFinalize ? const Icon(Icons.check_circle_outline) : null,
-                  onTap: canFinalize
-                      ? () => showDialog(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              title: const Text('Finalizeaza comanda?'),
-                              content: Text('ID $id'),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Nu')),
-                                FilledButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    _finalize(id);
-                                  },
-                                  child: const Text('Da'),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Card(
+                    child: ListTile(
+                      title: Text(title),
+                      subtitle: Text('Qty $qty • $status • $started'),
+                      trailing: canFinalize ? const Icon(Icons.check_circle_outline) : null,
+                      onTap: canFinalize
+                          ? () => showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: const Text('Finalizeaza comanda?'),
+                                  content: Text('ID $id'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Nu')),
+                                    FilledButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        _finalize(id);
+                                      },
+                                      child: const Text('Da'),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          )
-                      : null,
+                              )
+                          : null,
+                    ),
+                  ),
                 );
               },
             );

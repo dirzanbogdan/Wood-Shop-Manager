@@ -40,19 +40,25 @@ class _StockPageState extends State<StockPage> {
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          TextField(
-            controller: _qCtrl,
-            decoration: InputDecoration(
-              labelText: 'Cautare',
-              suffixIcon: IconButton(
-                onPressed: () {
-                  _qCtrl.clear();
-                  setState(() => _q = '');
-                },
-                icon: const Icon(Icons.clear),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                controller: _qCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Cautare',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      _qCtrl.clear();
+                      setState(() => _q = '');
+                    },
+                    icon: const Icon(Icons.clear),
+                  ),
+                ),
+                onChanged: (v) => setState(() => _q = v.trim()),
               ),
             ),
-            onChanged: (v) => setState(() => _q = v.trim()),
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -75,39 +81,43 @@ class _StockPageState extends State<StockPage> {
 
                 return ListView(
                   children: [
-                    ExpansionTile(
-                      initiallyExpanded: true,
-                      title: Text('Materiale (${mats.length})'),
-                      children: mats.map((m) {
-                        final mm = m as Map<String, dynamic>;
-                        return ListTile(
-                          title: Text((mm['name'] ?? '').toString()),
-                          subtitle: Text(
-                            '${(mm['type_name'] ?? '').toString()} • ${(mm['current_qty'] ?? '').toString()} ${(mm['unit_code'] ?? '').toString()}',
-                          ),
-                        );
-                      }).toList(),
+                    Card(
+                      child: ExpansionTile(
+                        initiallyExpanded: true,
+                        title: Text('Materiale (${mats.length})'),
+                        children: mats.map((m) {
+                          final mm = m as Map<String, dynamic>;
+                          return ListTile(
+                            title: Text((mm['name'] ?? '').toString()),
+                            subtitle: Text(
+                              '${(mm['type_name'] ?? '').toString()} • ${(mm['current_qty'] ?? '').toString()} ${(mm['unit_code'] ?? '').toString()}',
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    ExpansionTile(
-                      initiallyExpanded: true,
-                      title: Text('Produse (${prods.length})'),
-                      children: prods.map((p) {
-                        final pp = p as Map<String, dynamic>;
-                        final id = apiInt(pp['id']);
-                        return ListTile(
-                          title: Text((pp['name'] ?? '').toString()),
-                          subtitle: Text(
-                            'SKU ${(pp['sku'] ?? '').toString()} • Stoc ${(pp['stock_qty'] ?? '').toString()}',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: id < 1
-                              ? null
-                              : () => Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => ProductPage(productId: id)),
-                                  ),
-                        );
-                      }).toList(),
+                    const SizedBox(height: 8),
+                    Card(
+                      child: ExpansionTile(
+                        initiallyExpanded: true,
+                        title: Text('Produse (${prods.length})'),
+                        children: prods.map((p) {
+                          final pp = p as Map<String, dynamic>;
+                          final id = apiInt(pp['id']);
+                          return ListTile(
+                            title: Text((pp['name'] ?? '').toString()),
+                            subtitle: Text(
+                              'SKU ${(pp['sku'] ?? '').toString()} • Stoc ${(pp['stock_qty'] ?? '').toString()}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: id < 1
+                                ? null
+                                : () => Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (_) => ProductPage(productId: id)),
+                                    ),
+                          );
+                        }).toList(),
+                      ),
                     ),
                   ],
                 );

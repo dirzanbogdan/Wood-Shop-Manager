@@ -91,79 +91,86 @@ class _SalesPageState extends State<SalesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          if (_loadError != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(_loadError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ),
-          InputDecorator(
-            decoration: const InputDecoration(labelText: 'Produs'),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                isExpanded: true,
-                value: _productId,
-                items: _products
-                    .map(
-                      (p) => DropdownMenuItem<int>(
-                        value: apiInt(p['id'], fallback: 0),
-                        child: Text((p['name'] ?? '').toString()),
+      children: [
+        if (_loadError != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(_loadError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Produs'),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      isExpanded: true,
+                      value: _productId,
+                      items: _products
+                          .map(
+                            (p) => DropdownMenuItem<int>(
+                              value: apiInt(p['id'], fallback: 0),
+                              child: Text((p['name'] ?? '').toString()),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _loading ? null : (v) => setState(() => _productId = v),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _qtyCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Qty'),
+                        enabled: !_loading,
                       ),
-                    )
-                    .toList(),
-                onChanged: _loading ? null : (v) => setState(() => _productId = v),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _qtyCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Qty'),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _priceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(labelText: 'Pret'),
+                        enabled: !_loading,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _customerCtrl,
+                  decoration: const InputDecoration(labelText: 'Client (optional)'),
                   enabled: !_loading,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _priceCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Pret'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _channelCtrl,
+                  decoration: const InputDecoration(labelText: 'Canal (optional)'),
                   enabled: !_loading,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _customerCtrl,
-            decoration: const InputDecoration(labelText: 'Client (optional)'),
-            enabled: !_loading,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _channelCtrl,
-            decoration: const InputDecoration(labelText: 'Canal (optional)'),
-            enabled: !_loading,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Salveaza vanzare'),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _loading ? null : _submit,
+                    child: _loading
+                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Salveaza vanzare'),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

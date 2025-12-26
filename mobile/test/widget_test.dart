@@ -23,7 +23,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('WSM Login'), findsOneWidget);
+    expect(find.text('Wood Shop Manager'), findsOneWidget);
+    expect(find.text('Username'), findsOneWidget);
+    expect(find.text('Parola'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(2));
+
+    await tester.tap(find.text('Setari conexiune'));
+    await tester.pump();
+    expect(find.text('API Base URL'), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(3));
   });
 }

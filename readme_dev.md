@@ -47,6 +47,10 @@ Acest fisier descrie modificarile si modul de testare pentru integrarea DEV (API
 - Pentru Flutter Web (Chrome) CORS trebuie sa fie activ pe server; altfel vei vedea `ClientException: Failed to fetch`.
 
 ## Mobile (Login)
+### UI/UX
+- Tema actualizata (culori + input-uri "filled" + card-uri) pentru a evita aspectul gri.
+- Versiune APK curenta: `1.0.3+4` (`mobile/pubspec.yaml`).
+
 ### Parola
 - Toggle show/hide parola (icon-ul din dreapta campului).
 - La tastare, parola este afisata scurt (aprox. 700ms), apoi revine mascare.

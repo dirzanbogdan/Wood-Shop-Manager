@@ -77,10 +77,13 @@ class _LoginPageState extends State<LoginPage> {
     bool supported = false;
     bool hasCreds = false;
     try {
-      supported = await _localAuth.isDeviceSupported() && await _localAuth.canCheckBiometrics;
+      supported =
+          await _localAuth.isDeviceSupported() &&
+          await _localAuth.canCheckBiometrics;
       final u = await _secure.read(key: _kBioUser);
       final p = await _secure.read(key: _kBioPass);
-      hasCreds = (u != null && u.trim().isNotEmpty) && (p != null && p.isNotEmpty);
+      hasCreds =
+          (u != null && u.trim().isNotEmpty) && (p != null && p.isNotEmpty);
     } catch (_) {
       supported = false;
       hasCreds = false;
@@ -104,7 +107,9 @@ class _LoginPageState extends State<LoginPage> {
   void _showInstallDialog() {
     final directBaseUrl = _baseUrlCtrl.text.trim();
     final future = () async {
-      final baseUrl = directBaseUrl.isNotEmpty ? directBaseUrl : (await SessionStore.instance.getBaseUrl()).trim();
+      final baseUrl = directBaseUrl.isNotEmpty
+          ? directBaseUrl
+          : (await SessionStore.instance.getBaseUrl()).trim();
       if (baseUrl.isNotEmpty && directBaseUrl.isNotEmpty) {
         await SessionStore.instance.setBaseUrl(baseUrl);
       }
@@ -124,10 +129,14 @@ class _LoginPageState extends State<LoginPage> {
         final res = await ApiClient.instance.appVersion();
         final data = res['data'];
         if (data is Map<String, dynamic>) {
-          latestVersion = (data['latest_version'] is String) ? data['latest_version'] as String : null;
+          latestVersion = (data['latest_version'] is String)
+              ? data['latest_version'] as String
+              : null;
           latestBuild = apiInt(data['latest_build'], fallback: 0);
           if (latestBuild == 0) latestBuild = null;
-          final remoteApkUrl = (data['apk_url'] is String) ? (data['apk_url'] as String).trim() : '';
+          final remoteApkUrl = (data['apk_url'] is String)
+              ? (data['apk_url'] as String).trim()
+              : '';
           if (remoteApkUrl.isNotEmpty) {
             apkUrl = remoteApkUrl;
           }
@@ -176,16 +185,19 @@ class _LoginPageState extends State<LoginPage> {
                             : 'Versiune instalata: ${info.currentVersion} (${info.currentBuild})',
                       ),
                       const SizedBox(height: 8),
-                      if (info?.error != null) Text('Nu pot verifica update: ${info!.error}'),
+                      if (info?.error != null)
+                        Text('Nu pot verifica update: ${info!.error}'),
                       if (info?.error == null)
                         Text(
-                          'Versiune server: ${(info?.latestVersion ?? '-') } (${info?.latestBuild?.toString() ?? '-'})',
+                          'Versiune server: ${(info?.latestVersion ?? '-')} (${info?.latestBuild?.toString() ?? '-'})',
                         ),
                       const SizedBox(height: 8),
                       Text(
                         apkUrl.isEmpty
                             ? 'Seteaza API Base URL ca sa genereze un link.'
-                            : (hasUpdate ? 'Update disponibil. Link: $apkUrl' : 'Link: $apkUrl'),
+                            : (hasUpdate
+                                  ? 'Update disponibil. Link: $apkUrl'
+                                  : 'Link: $apkUrl'),
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -212,11 +224,16 @@ class _LoginPageState extends State<LoginPage> {
                     final messenger = ScaffoldMessenger.of(this.context);
                     Clipboard.setData(ClipboardData(text: apkUrl));
                     Navigator.pop(dialogContext);
-                    messenger.showSnackBar(const SnackBar(content: Text('Link copiat.')));
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Link copiat.')),
+                    );
                   },
                   child: const Text('Copiaza link'),
                 ),
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Inchide')),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Inchide'),
+              ),
             ],
           );
         },
@@ -233,7 +250,11 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _submit({String? directUsername, String? directPassword, bool finishAutofill = true}) async {
+  Future<void> _submit({
+    String? directUsername,
+    String? directPassword,
+    bool finishAutofill = true,
+  }) async {
     final username = (directUsername ?? _usernameCtrl.text).trim();
     final password = directPassword ?? _passwordCtrl.text;
     final baseUrl = _baseUrlCtrl.text.trim();
@@ -263,7 +284,9 @@ class _LoginPageState extends State<LoginPage> {
         } catch (_) {}
       }
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {
@@ -292,7 +315,10 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final ok = await _localAuth.authenticate(
         localizedReason: 'Autentificare cu amprenta',
-        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
       );
       if (!ok) {
         setState(() => _error = 'Autentificare anulata.');
@@ -311,7 +337,11 @@ class _LoginPageState extends State<LoginPage> {
       }
       _usernameCtrl.text = username;
       _passwordCtrl.text = password;
-      await _submit(directUsername: username, directPassword: password, finishAutofill: false);
+      await _submit(
+        directUsername: username,
+        directPassword: password,
+        finishAutofill: false,
+      );
     } catch (_) {
       setState(() => _error = 'Nu pot folosi amprenta pe acest dispozitiv.');
     } finally {
@@ -321,82 +351,190 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('WSM Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: AutofillGroup(
-          child: Column(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
             children: [
-              TextField(
-                controller: _usernameCtrl,
-                decoration: const InputDecoration(labelText: 'Username'),
-                textInputAction: TextInputAction.next,
-                enabled: !_loading,
-                autofillHints: const [AutofillHints.username],
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cs.primary, cs.primaryContainer],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      height: 44,
+                      width: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.carpenter, color: Colors.white),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Wood Shop Manager',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'Login',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Parola',
-                  suffixIcon: IconButton(
-                    onPressed: _loading
-                        ? null
-                        : () {
-                            setState(() {
-                              _obscure = !_obscure;
-                              _reveal = false;
-                            });
-                          },
-                    icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _usernameCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Username',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        textInputAction: TextInputAction.next,
+                        enabled: !_loading,
+                        autofillHints: const [AutofillHints.username],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _passwordCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Parola',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            onPressed: _loading
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _obscure = !_obscure;
+                                      _reveal = false;
+                                    });
+                                  },
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                          ),
+                        ),
+                        obscureText: _obscure && !_reveal,
+                        enabled: !_loading,
+                        keyboardType: TextInputType.visiblePassword,
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        autofillHints: const [AutofillHints.password],
+                        onChanged: _onPasswordChanged,
+                        onSubmitted: (_) => _submit(),
+                      ),
+                      const SizedBox(height: 12),
+                      ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        title: const Text('Setari conexiune'),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: TextField(
+                              controller: _baseUrlCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'API Base URL',
+                                prefixIcon: Icon(Icons.link),
+                              ),
+                              enabled: !_loading,
+                              keyboardType: TextInputType.url,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            _error!,
+                            style: TextStyle(color: cs.error),
+                          ),
+                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _loading ? null : _submit,
+                          child: _loading
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Login'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                obscureText: _obscure && !_reveal,
-                enabled: !_loading,
-                keyboardType: TextInputType.visiblePassword,
-                enableSuggestions: false,
-                autocorrect: false,
-                autofillHints: const [AutofillHints.password],
-                onChanged: _onPasswordChanged,
-                onSubmitted: (_) => _submit(),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _baseUrlCtrl,
-                decoration: const InputDecoration(labelText: 'API Base URL'),
-                enabled: !_loading,
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 16),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              (!_bioAvailable ||
+                                  !_bioHasCreds ||
+                                  _loading ||
+                                  _bioLoading)
+                              ? null
+                              : _loginWithBiometric,
+                          icon: _bioLoading
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.fingerprint),
+                          label: const Text('Login cu amprenta'),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      TextButton(
+                        onPressed: _loading ? null : _showInstallDialog,
+                        child: const Text('Descarca / instaleaza APK'),
+                      ),
+                    ],
+                  ),
                 ),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  child: _loading
-                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Login'),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: (!_bioAvailable || !_bioHasCreds || _loading || _bioLoading) ? null : _loginWithBiometric,
-                  icon: _bioLoading
-                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.fingerprint),
-                  label: const Text('Login cu amprenta'),
-                ),
-              ),
-              TextButton(
-                onPressed: _loading ? null : _showInstallDialog,
-                child: const Text('Descarca / instaleaza APK'),
               ),
             ],
           ),
