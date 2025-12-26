@@ -31,8 +31,8 @@ $base = [
     ],
     'mobile' => [
         'apk_path' => '/downloads/wsm.apk',
-        'latest_version' => '1.0.0',
-        'latest_build' => 1,
+        'latest_version' => '1.0.2',
+        'latest_build' => 3,
     ],
     'update' => [
         'git_branch' => 'main',

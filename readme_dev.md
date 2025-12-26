@@ -43,3 +43,16 @@ Acest fisier descrie modificarile si modul de testare pentru integrarea DEV (API
 - Seteaza `SessionStore.getBaseUrl()` la domeniul corect (ex: `https://wsmdev.greensh3ll.com` sau `http://127.0.0.1:8000`).
 - Daca instanta e servita din sub-folder, `baseUrl` trebuie sa includa path-ul (ex: `http://127.0.0.1:8000/public`).
 - Pentru Flutter Web (Chrome) CORS trebuie sa fie activ pe server; altfel vei vedea `ClientException: Failed to fetch`.
+
+## Mobile (Login)
+### Parola
+- Toggle show/hide parola (icon-ul din dreapta campului).
+- La tastare, parola este afisata scurt (aprox. 700ms), apoi revine mascare.
+
+### Password manager (Autofill)
+- Campurile au `autofillHints` (`username`, `password`) si sunt in `AutofillGroup`.
+- Dupa login reusit, aplicatia finalizeaza contextul de autofill cu `shouldSave: true` (telefonul poate afisa prompt de salvare).
+
+### Amprenta (Biometric)
+- Dupa primul login reusit cu user/parola, credidentialele sunt salvate in `flutter_secure_storage`.
+- Butonul "Login cu amprenta" devine activ doar daca dispozitivul suporta biometrie si exista credidentiale salvate.

@@ -7,6 +7,13 @@
 - Flutter: afiseaza erori utile cand serverul intoarce non-JSON / CORS block
 - Flutter: pastreaza path-ul din `baseUrl` (ex: `.../public`)
 - Flutter: extins `SessionStore` cu cookie + CSRF (pregatire pentru fallback pe sesiune)
+- Update: `public/downloads/wsm.apk` este protejat la update (backup/restore) daca devine pointer LFS
+- Update: detectie pointer Git LFS (134B) + mesaje clare cu solutii (`git lfs pull` / upload manual)
+- Update: `git pull` incearca automat `git lfs pull` cand este disponibil
+- Mobile: camp parola cu show/hide si afisare temporara la tastare
+- Mobile: autofill pentru username/parola + salvare in password manager dupa login
+- Mobile: login cu amprenta (biometric) dupa primul login cu user/parola
+- Versiuni mobile: `1.0.2+3` (server `config/config.php` + APK `pubspec.yaml`)
 
 ## 2025-12-25
 

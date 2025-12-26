@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../services/api_client.dart';
@@ -43,16 +47,49 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   String? _error;
 
+  bool _obscure = true;
+  bool _reveal = false;
+  Timer? _revealTimer;
+
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  final FlutterSecureStorage _secure = const FlutterSecureStorage();
+  bool _bioAvailable = false;
+  bool _bioHasCreds = false;
+  bool _bioLoading = false;
+
+  static const _kBioUser = 'bio_username';
+  static const _kBioPass = 'bio_password';
+
   @override
   void initState() {
     super.initState();
     _loadBaseUrl();
+    _initBiometric();
   }
 
   Future<void> _loadBaseUrl() async {
     final url = await SessionStore.instance.getBaseUrl();
     if (!mounted) return;
     setState(() => _baseUrlCtrl.text = url);
+  }
+
+  Future<void> _initBiometric() async {
+    bool supported = false;
+    bool hasCreds = false;
+    try {
+      supported = await _localAuth.isDeviceSupported() && await _localAuth.canCheckBiometrics;
+      final u = await _secure.read(key: _kBioUser);
+      final p = await _secure.read(key: _kBioPass);
+      hasCreds = (u != null && u.trim().isNotEmpty) && (p != null && p.isNotEmpty);
+    } catch (_) {
+      supported = false;
+      hasCreds = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _bioAvailable = supported;
+      _bioHasCreds = hasCreds;
+    });
   }
 
   String _apkUrlFromBaseUrl(String baseUrl) {
@@ -189,15 +226,16 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    _revealTimer?.cancel();
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _baseUrlCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    final username = _usernameCtrl.text.trim();
-    final password = _passwordCtrl.text;
+  Future<void> _submit({String? directUsername, String? directPassword, bool finishAutofill = true}) async {
+    final username = (directUsername ?? _usernameCtrl.text).trim();
+    final password = directPassword ?? _passwordCtrl.text;
     final baseUrl = _baseUrlCtrl.text.trim();
     if (baseUrl.isNotEmpty) {
       await SessionStore.instance.setBaseUrl(baseUrl);
@@ -214,6 +252,16 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       await ApiClient.instance.tokenLogin(username, password);
+      try {
+        await _secure.write(key: _kBioUser, value: username);
+        await _secure.write(key: _kBioPass, value: password);
+        _bioHasCreds = true;
+      } catch (_) {}
+      if (finishAutofill) {
+        try {
+          TextInput.finishAutofillContext(shouldSave: true);
+        } catch (_) {}
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
     } on ApiException catch (e) {
@@ -225,55 +273,133 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _onPasswordChanged(String _) {
+    if (!_obscure) return;
+    _revealTimer?.cancel();
+    setState(() => _reveal = true);
+    _revealTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      setState(() => _reveal = false);
+    });
+  }
+
+  Future<void> _loginWithBiometric() async {
+    if (_loading || _bioLoading || !_bioAvailable || !_bioHasCreds) return;
+    setState(() {
+      _bioLoading = true;
+      _error = null;
+    });
+    try {
+      final ok = await _localAuth.authenticate(
+        localizedReason: 'Autentificare cu amprenta',
+        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
+      );
+      if (!ok) {
+        setState(() => _error = 'Autentificare anulata.');
+        return;
+      }
+      final u = await _secure.read(key: _kBioUser);
+      final p = await _secure.read(key: _kBioPass);
+      final username = (u ?? '').trim();
+      final password = p ?? '';
+      if (username.isEmpty || password.isEmpty) {
+        setState(() {
+          _bioHasCreds = false;
+          _error = 'Nu exista credidentiale salvate pentru amprenta.';
+        });
+        return;
+      }
+      _usernameCtrl.text = username;
+      _passwordCtrl.text = password;
+      await _submit(directUsername: username, directPassword: password, finishAutofill: false);
+    } catch (_) {
+      setState(() => _error = 'Nu pot folosi amprenta pe acest dispozitiv.');
+    } finally {
+      if (mounted) setState(() => _bioLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('WSM Login')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _usernameCtrl,
-              decoration: const InputDecoration(labelText: 'Username'),
-              textInputAction: TextInputAction.next,
-              enabled: !_loading,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordCtrl,
-              decoration: const InputDecoration(labelText: 'Parola'),
-              obscureText: true,
-              enabled: !_loading,
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _baseUrlCtrl,
-              decoration: const InputDecoration(labelText: 'API Base URL'),
-              enabled: !_loading,
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 16),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        child: AutofillGroup(
+          child: Column(
+            children: [
+              TextField(
+                controller: _usernameCtrl,
+                decoration: const InputDecoration(labelText: 'Username'),
+                textInputAction: TextInputAction.next,
+                enabled: !_loading,
+                autofillHints: const [AutofillHints.username],
               ),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _loading ? null : _submit,
-                child: _loading
-                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Login'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Parola',
+                  suffixIcon: IconButton(
+                    onPressed: _loading
+                        ? null
+                        : () {
+                            setState(() {
+                              _obscure = !_obscure;
+                              _reveal = false;
+                            });
+                          },
+                    icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                  ),
+                ),
+                obscureText: _obscure && !_reveal,
+                enabled: !_loading,
+                keyboardType: TextInputType.visiblePassword,
+                enableSuggestions: false,
+                autocorrect: false,
+                autofillHints: const [AutofillHints.password],
+                onChanged: _onPasswordChanged,
+                onSubmitted: (_) => _submit(),
               ),
-            ),
-            TextButton(
-              onPressed: _loading ? null : _showInstallDialog,
-              child: const Text('Descarca / instaleaza APK'),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextField(
+                controller: _baseUrlCtrl,
+                decoration: const InputDecoration(labelText: 'API Base URL'),
+                enabled: !_loading,
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 16),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                ),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  child: _loading
+                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Login'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: (!_bioAvailable || !_bioHasCreds || _loading || _bioLoading) ? null : _loginWithBiometric,
+                  icon: _bioLoading
+                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.fingerprint),
+                  label: const Text('Login cu amprenta'),
+                ),
+              ),
+              TextButton(
+                onPressed: _loading ? null : _showInstallDialog,
+                child: const Text('Descarca / instaleaza APK'),
+              ),
+            ],
+          ),
         ),
       ),
     );
