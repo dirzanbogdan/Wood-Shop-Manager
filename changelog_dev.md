@@ -9,6 +9,8 @@
 - Flutter: extins `SessionStore` cu cookie + CSRF (pregatire pentru fallback pe sesiune)
 - Update: `public/downloads/wsm.apk` este protejat la update (backup/restore) daca se strica fisierul
 - Update: detectie APK invalid (fisier prea mic) + mesaj cu solutie (upload manual)
+- Update: `git pull` ignora fisierele untracked (ex: `storage/`) si nu mai reseteaza `wsm.apk` incarcat manual
+- Repo: `public/downloads/wsm.apk` scos din git (se livreaza prin upload manual pe server)
 - Mobile: camp parola cu show/hide si afisare temporara la tastare
 - Mobile: autofill pentru username/parola + salvare in password manager dupa login
 - Mobile: login cu amprenta (biometric) dupa primul login cu user/parola
@@ -39,4 +41,3 @@
 - `v1Login` returneaza si token-ul CSRF (`csrf_key`, `csrf_token`) pentru flow mobil simplificat
 - UI Update: `git pull` este blocat daca repo nu este pe branch-ul configurat in `config.php` (`update.git_branch`, default `main`)
 - UI Update: afiseaza branch-ul configurat pentru update in pagina `Update`
-

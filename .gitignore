@@ -27,6 +27,8 @@ git-error-*
 
 # Backups on server
 storage/backups/
+storage/
+public/downloads/
 
 # Node (if ever used)
 node_modules/

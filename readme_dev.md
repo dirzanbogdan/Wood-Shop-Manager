@@ -38,6 +38,8 @@ Acest fisier descrie modificarile si modul de testare pentru integrarea DEV (API
 - In `config/config.php` exista `update.git_branch` (default `main`).
 - Din UI, actiunea `git pull` este permisa doar daca branch-ul curent este exact cel configurat.
 - Daca repo este in `detached HEAD`, update-ul este blocat.
+- `public/downloads/wsm.apk` nu mai este livrat prin git. APK-ul se incarca manual pe server in `public/downloads/wsm.apk`.
+- La update, daca APK-ul lipseste sau devine invalid (fisier prea mic), sistemul incearca sa-l restaureze din `storage/tmp/wsm.apk.backup` (ultimul APK bun).
 
 ## Testare Flutter (MVP)
 - Seteaza `SessionStore.getBaseUrl()` la domeniul corect (ex: `https://wsmdev.greensh3ll.com` sau `http://127.0.0.1:8000`).

@@ -418,6 +418,11 @@ final class UpdateController extends Controller
             return $res;
         };
 
+        $trackedApk = $run(['ls-files', '--error-unmatch', 'public/downloads/wsm.apk'], 'git ls-files --error-unmatch public/downloads/wsm.apk');
+        if ((int) ($trackedApk['code'] ?? 1) === 0) {
+            $run(['update-index', '--skip-worktree', 'public/downloads/wsm.apk'], 'git update-index --skip-worktree public/downloads/wsm.apk');
+        }
+
         $branchRes = $run(['rev-parse', '--abbrev-ref', 'HEAD'], 'git rev-parse --abbrev-ref HEAD');
         $currentBranch = trim((string) ($branchRes['out'] ?? ''));
         if ($currentBranch === '' || $currentBranch === 'HEAD') {
@@ -540,11 +545,11 @@ final class UpdateController extends Controller
                 }
             }
 
-            $status = $run(['status', '--porcelain'], 'git status --porcelain');
+            $status = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no');
             $porcelain = trim((string) ($status['out'] ?? ''));
             if ($porcelain !== '') {
                 $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (cleanup)');
-                $status2 = $run(['status', '--porcelain'], 'git status --porcelain (after cleanup)');
+                $status2 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after cleanup)');
                 $porcelain2 = trim((string) ($status2['out'] ?? ''));
                 if ($porcelain2 !== '') {
                     $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain2);
