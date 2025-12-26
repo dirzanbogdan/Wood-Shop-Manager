@@ -36,21 +36,70 @@ class ApiClient {
 
   static final ApiClient instance = ApiClient._();
 
+  String _baseForMessage(Uri uri) {
+    final cleaned = Uri(
+      scheme: uri.scheme,
+      host: uri.host,
+      port: uri.hasPort ? uri.port : null,
+      path: uri.path,
+    );
+    final s = cleaned.toString();
+    return s.endsWith('/') ? s.substring(0, s.length - 1) : s;
+  }
+
+  String? _typoHintForHost(String host) {
+    final def = Uri.tryParse(SessionStore.defaultBaseUrl)?.host ?? '';
+    if (def.isEmpty) return null;
+    if (host.toLowerCase() == def.toLowerCase()) return null;
+    final normalizedHost = host.toLowerCase().replaceAll('i', 'l');
+    final normalizedDef = def.toLowerCase().replaceAll('i', 'l');
+    if (normalizedHost == normalizedDef) {
+      return 'Posibil typo (litera I vs l). Domeniu asteptat: `$def`.';
+    }
+    return null;
+  }
+
   ApiException _connError(Object e, Uri uri) {
     if (e is SocketException) {
       final msg = e.message;
-      final looksLikeDns = msg.contains('Failed host lookup') || msg.contains('No address associated with hostname');
+      final looksLikeDns =
+          msg.contains('Failed host lookup') ||
+          msg.contains('No address associated with hostname');
       if (looksLikeDns) {
+        final os = e.osError;
+        final osLine = os == null
+            ? null
+            : 'Detalii sistem: OS Error: ${os.message} (errno ${os.errorCode})';
+        final hint = _typoHintForHost(uri.host);
+        final attempted = _snippet(uri.toString(), max: 320);
         return ApiException(
-          'Nu pot rezolva domeniul `${uri.host}`. Verifica "Setari conexiune" (Base URL) si conexiunea la internet.',
+          [
+            'Nu pot rezolva domeniul `${uri.host}`.',
+            'URL incercat: $attempted',
+            'Base URL: ${_baseForMessage(uri)}',
+            if (osLine != null) osLine,
+            if (hint != null) hint,
+            'Sugestii: verifica Base URL, apasa "Reset Base URL", dezactiveaza VPN / Private DNS pentru test.',
+          ].join('\n'),
         );
       }
-      return ApiException('Nu ma pot conecta la server (${uri.host}): ${e.message}');
+      return ApiException(
+        'Nu ma pot conecta la server (${uri.host}): ${e.message}',
+      );
     }
     final raw = e.toString();
-    if (raw.contains('Failed host lookup') || raw.contains('No address associated with hostname')) {
+    if (raw.contains('Failed host lookup') ||
+        raw.contains('No address associated with hostname')) {
+      final hint = _typoHintForHost(uri.host);
+      final attempted = _snippet(uri.toString(), max: 320);
       return ApiException(
-        'Nu pot rezolva domeniul `${uri.host}`. Verifica "Setari conexiune" (Base URL) si conexiunea la internet.',
+        [
+          'Nu pot rezolva domeniul `${uri.host}`.',
+          'URL incercat: $attempted',
+          'Base URL: ${_baseForMessage(uri)}',
+          if (hint != null) hint,
+          'Sugestii: verifica Base URL, apasa "Reset Base URL", dezactiveaza VPN / Private DNS pentru test.',
+        ].join('\n'),
       );
     }
     return ApiException('Nu ma pot conecta la server: $e');
@@ -80,7 +129,10 @@ class ApiClient {
     final raw = utf8.decode(res.bodyBytes, allowMalformed: true);
     final trimmed = raw.trim();
     if (trimmed.isEmpty) {
-      throw ApiException('Raspuns gol (HTTP ${res.statusCode}).', status: res.statusCode);
+      throw ApiException(
+        'Raspuns gol (HTTP ${res.statusCode}).',
+        status: res.statusCode,
+      );
     }
 
     dynamic decoded;
@@ -96,7 +148,10 @@ class ApiClient {
     if (decoded is Map<String, dynamic>) {
       return decoded;
     }
-    throw ApiException('Raspuns JSON invalid (HTTP ${res.statusCode}).', status: res.statusCode);
+    throw ApiException(
+      'Raspuns JSON invalid (HTTP ${res.statusCode}).',
+      status: res.statusCode,
+    );
   }
 
   Future<Map<String, String>> _headers({bool json = false}) async {
@@ -114,7 +169,10 @@ class ApiClient {
     return h;
   }
 
-  Future<Map<String, dynamic>> get(String route, {Map<String, String>? query}) async {
+  Future<Map<String, dynamic>> get(
+    String route, {
+    Map<String, String>? query,
+  }) async {
     final uri = await _uri(route, query);
     http.Response res;
     try {
@@ -128,13 +186,20 @@ class ApiClient {
     }
     final err = body['error'];
     throw ApiException(
-      (err is Map && err['message'] is String) ? err['message'] as String : 'Request failed',
-      code: (err is Map && err['code'] is String) ? err['code'] as String : null,
+      (err is Map && err['message'] is String)
+          ? err['message'] as String
+          : 'Request failed',
+      code: (err is Map && err['code'] is String)
+          ? err['code'] as String
+          : null,
       status: res.statusCode,
     );
   }
 
-  Future<Map<String, dynamic>> post(String route, Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> post(
+    String route,
+    Map<String, dynamic> payload,
+  ) async {
     final uri = await _uri(route);
     http.Response res;
     try {
@@ -152,14 +217,21 @@ class ApiClient {
     }
     final err = body['error'];
     throw ApiException(
-      (err is Map && err['message'] is String) ? err['message'] as String : 'Request failed',
-      code: (err is Map && err['code'] is String) ? err['code'] as String : null,
+      (err is Map && err['message'] is String)
+          ? err['message'] as String
+          : 'Request failed',
+      code: (err is Map && err['code'] is String)
+          ? err['code'] as String
+          : null,
       status: res.statusCode,
     );
   }
 
   Future<void> tokenLogin(String username, String password) async {
-    final res = await post('api/v1TokenLogin', {'username': username, 'password': password});
+    final res = await post('api/v1TokenLogin', {
+      'username': username,
+      'password': password,
+    });
     final data = res['data'];
     if (data is! Map<String, dynamic>) {
       throw ApiException('Invalid login response');
