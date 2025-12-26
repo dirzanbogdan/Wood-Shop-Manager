@@ -7,7 +7,7 @@ $base = [
         'name' => 'GreenSh3ll Wood Shop Manager',
         'base_url' => '',
         'session_name' => 'gsh3ll_wsm',
-        'version_major' => 4,
+        'version_major' => 3,
         'version_minor' => 1,
         'version_date' => '27122025',
     ],

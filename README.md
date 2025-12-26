@@ -1,6 +1,6 @@
 # GreenSh3ll Wood Shop Manager
 
-Versiune: afișată în footer (ex: `v4.27122025.001`)
+Versiune: afișată în footer (ex: `v3.27122025.001`)
 
 Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
 - `major`: versiunea majoră (configurabilă în `config/config.php`)

@@ -1,6 +1,6 @@
 # Changelog
 
-## v4.27122025.001
+## v3.27122025.001
 
 - API v1: răspuns standardizat `ok/data/error/meta` + erori consistente
 - API v1: autentificare Bearer (token login) + suport header `Authorization`
@@ -67,4 +67,3 @@ SQL:
 
 SQL:
 - ALTER TABLE materials ADD COLUMN purchase_url VARCHAR(500) NULL AFTER purchase_date;
-
