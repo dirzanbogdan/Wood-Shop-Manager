@@ -327,6 +327,15 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _error = null);
   }
 
+  void _copyError() {
+    final msg = (_error ?? '').trim();
+    if (msg.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: msg));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Eroare copiata in clipboard.')),
+    );
+  }
+
   void _onPasswordChanged(String _) {
     if (!_obscure) return;
     _revealTimer?.cancel();
@@ -516,16 +525,29 @@ class _LoginPageState extends State<LoginPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(_error!, style: TextStyle(color: cs.error)),
-                              if (_error!.contains('domeniul') ||
-                                  _error!.contains('Base URL'))
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: _loading ? null : _resetBaseUrl,
-                                    child: const Text('Reset Base URL'),
-                                  ),
+                              SelectableText(
+                                _error!,
+                                style: TextStyle(color: cs.error),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    TextButton(
+                                      onPressed: _loading ? null : _copyError,
+                                      child: const Text('Copiaza eroare'),
+                                    ),
+                                    if (_error!.contains('domeniul') ||
+                                        _error!.contains('Base URL'))
+                                      TextButton(
+                                        onPressed:
+                                            _loading ? null : _resetBaseUrl,
+                                        child: const Text('Reset Base URL'),
+                                      ),
+                                  ],
                                 ),
+                              ),
                             ],
                           ),
                         ),
