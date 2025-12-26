@@ -11,6 +11,23 @@ use App\Core\Flash;
 
 final class UpdateController extends Controller
 {
+    private function isGitLfsPointerFile(string $path): bool
+    {
+        if (!is_file($path)) {
+            return false;
+        }
+        $fh = @fopen($path, 'rb');
+        if ($fh === false) {
+            return false;
+        }
+        $head = (string) @fread($fh, 256);
+        fclose($fh);
+        if ($head === '') {
+            return false;
+        }
+        return str_contains($head, 'git-lfs.github.com/spec/v1');
+    }
+
     public function index(): void
     {
         $this->requireAuth();
@@ -439,6 +456,12 @@ final class UpdateController extends Controller
             ) {
                 $msg = trim($msg . "\n\nATENTIE: `git lfs` nu este disponibil pe server. Fisierele mari (ex: `public/downloads/wsm.apk`) pot ramane doar pointer si nu vor fi descarcate.");
             }
+
+            $apkFsPath = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'downloads' . DIRECTORY_SEPARATOR . 'wsm.apk';
+            clearstatcache(true, $apkFsPath);
+            if ($this->isGitLfsPointerFile($apkFsPath)) {
+                $msg = trim($msg . "\n\nATENTIE: `public/downloads/wsm.apk` este un pointer Git LFS (aprox. 134B), nu APK-ul real. Solutie: instaleaza `git lfs` pe server si ruleaza `git lfs pull`, sau incarca manual APK-ul in `public/downloads/wsm.apk`.");
+            }
             if (function_exists('opcache_reset')) {
                 @opcache_reset();
             }
@@ -530,7 +553,14 @@ final class UpdateController extends Controller
             return $dbRes;
         }
 
-        return ['ok' => true, 'message' => 'Update aplicat din arhiva GitHub + DB actualizat.'];
+        $msg = 'Update aplicat din arhiva GitHub + DB actualizat.';
+        $apkFsPath = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'downloads' . DIRECTORY_SEPARATOR . 'wsm.apk';
+        clearstatcache(true, $apkFsPath);
+        if ($this->isGitLfsPointerFile($apkFsPath)) {
+            $msg = trim($msg . "\n\nATENTIE: `public/downloads/wsm.apk` este un pointer Git LFS (aprox. 134B), nu APK-ul real. Arhiva GitHub (zip) nu contine continutul LFS. Solutie: incarca manual APK-ul in `public/downloads/wsm.apk` sau foloseste update din git pe un server cu `git lfs` instalat.");
+        }
+
+        return ['ok' => true, 'message' => $msg];
     }
 
     private function downloadFile(string $url, string $dest): array
