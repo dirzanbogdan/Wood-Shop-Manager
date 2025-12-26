@@ -1,6 +1,6 @@
 # GreenSh3ll Wood Shop Manager
 
-Versiune: afișată în footer (ex: `v2.22122025.003`)
+Versiune: afișată în footer (ex: `v4.27122025.001`)
 
 Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
 - `major`: versiunea majoră (configurabilă în `config/config.php`)
@@ -16,6 +16,8 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
 ## Functionalitati
 
 - Autentificare: login/logout, roluri `SuperAdmin` / `Admin` / `Operator`
+- API v1 (JSON): autentificare Bearer + endpoint-uri pentru mobile/web
+- Mobile (WSM): aplicație Flutter (login, stoc, producție, vânzări)
 - Dashboard:
   - materiale cu stoc critic
   - comenzi de producție în lucru
@@ -79,18 +81,8 @@ Configuratia locala se salveaza in `config/local.php` (nu intra in Git).
 
 Pagina: `/?r=update/index`
 
-Etape:
+Include:
 
-1. Backup DB:
-   - Descarcare `.sql` pe PC
-   - Salvare `.sql` pe server in `storage/backups/`
-2. Evidentiere modificari:
-   - Lista modificarilor incluse in versiunea curenta
-
-Optional (daca proiectul este clonat cu git pe server si `proc_open` este permis):
-- Butonul “Aplica update (git pull)” face `git pull --ff-only`.
-- Daca apare eroare de permisiuni pe `.git` (ex: `.git/logs/...: Permission denied`), userul web nu are drepturi de scriere; foloseste update din zip sau seteaza permisiuni corecte.
-- Output-ul complet al comenzilor este afișat în UI (multi-line).
-
-Alternativ (daca git nu este disponibil pe server):
-- Butonul “Aplica update (GitHub zip)” descarca arhiva `main.zip` si aplica update-ul.
+- Backup DB (download `.sql` sau salvare pe server)
+- Aplicare update din git (`git pull --ff-only`) când git + `proc_open` sunt disponibile
+- Alternativ: update din arhiva GitHub (zip) când git nu este disponibil

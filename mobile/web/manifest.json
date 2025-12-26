@@ -1,6 +1,6 @@
 {
-    "name": "wsm_mobile",
-    "short_name": "wsm_mobile",
+    "name": "WSM",
+    "short_name": "WSM",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

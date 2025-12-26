@@ -1,5 +1,13 @@
 # Changelog
 
+## v4.27122025.001
+
+- API v1: răspuns standardizat `ok/data/error/meta` + erori consistente
+- API v1: autentificare Bearer (token login) + suport header `Authorization`
+- API v1: CORS configurabil din config
+- Update: păstrează `public/downloads/wsm.apk` la update (backup/restore)
+- Mobile (WSM): aplicație Flutter MVP + validare Base URL + erori copiable
+
 ## v2.22122025.004
 
 - Input: acceptă valori zecimale de forma `.23` și normalizează la `0.23` (Excel-like)

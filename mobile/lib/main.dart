@@ -19,7 +19,7 @@ class WsmApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      title: 'wsm dev',
+      title: 'WSM',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
