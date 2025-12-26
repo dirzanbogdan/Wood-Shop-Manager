@@ -14,23 +14,6 @@ final class ApiController extends Controller
     private ?int $bearerUserId = null;
     private bool $bearerChecked = false;
 
-    private function isGitLfsPointerFile(string $path): bool
-    {
-        if (!is_file($path)) {
-            return false;
-        }
-        $fh = @fopen($path, 'rb');
-        if ($fh === false) {
-            return false;
-        }
-        $head = (string) @fread($fh, 256);
-        fclose($fh);
-        if ($head === '') {
-            return false;
-        }
-        return str_contains($head, 'git-lfs.github.com/spec/v1');
-    }
-
     private function baseMeta(array $meta = []): array
     {
         $version = isset($this->config['app']['version']) ? (string) $this->config['app']['version'] : '';
@@ -442,15 +425,13 @@ final class ApiController extends Controller
 
         $apkSize = null;
         $apkUpdatedAt = null;
-        $apkIsLfsPointer = null;
         $apkOk = null;
         if ($apkFsPath !== null) {
             clearstatcache(true, $apkFsPath);
             $apkSizeRaw = filesize($apkFsPath);
             $apkSize = $apkSizeRaw !== false ? (int) $apkSizeRaw : null;
             $apkUpdatedAt = gmdate('c', (int) filemtime($apkFsPath));
-            $apkIsLfsPointer = $this->isGitLfsPointerFile($apkFsPath);
-            $apkOk = $apkSize !== null && $apkSize >= (1024 * 1024) && $apkIsLfsPointer === false;
+            $apkOk = $apkSize !== null && $apkSize >= (1024 * 1024);
         }
 
         $this->ok([
@@ -460,7 +441,6 @@ final class ApiController extends Controller
             'apk_url' => $apkUrl,
             'apk_size' => $apkSize,
             'apk_updated_at' => $apkUpdatedAt,
-            'apk_is_lfs_pointer' => $apkIsLfsPointer,
             'apk_ok' => $apkOk,
         ]);
     }

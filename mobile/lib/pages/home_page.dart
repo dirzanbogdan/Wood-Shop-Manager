@@ -38,12 +38,27 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _index = 0;
+  String? _appVersion;
 
   final _pages = const [
     StockPage(),
     ProductionPage(),
     SalesPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final pkg = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() => _appVersion = 'v${pkg.version} (${pkg.buildNumber})');
+    } catch (_) {}
+  }
 
   Future<void> _logout() async {
     await SessionStore.instance.clearToken();
@@ -190,7 +205,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WSM'),
+        title: Text(_appVersion == null ? 'WSM' : 'WSM ${_appVersion!}'),
         actions: [
           IconButton(onPressed: _showInstallDialog, icon: const Icon(Icons.download)),
           IconButton(onPressed: _logout, icon: const Icon(Icons.logout)),
