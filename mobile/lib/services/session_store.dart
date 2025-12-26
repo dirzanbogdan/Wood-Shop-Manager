@@ -5,6 +5,8 @@ class SessionStore {
 
   static final SessionStore instance = SessionStore._();
 
+  static const defaultBaseUrl = 'https://wsmdev.greensh3ll.com';
+
   static const _kToken = 'token';
   static const _kBaseUrl = 'base_url';
 
@@ -12,6 +14,29 @@ class SessionStore {
   String? _baseUrl;
   bool _loaded = false;
   SharedPreferences? _prefs;
+
+  static String? normalizeBaseUrl(String input) {
+    final raw = input.trim();
+    if (raw.isEmpty) return null;
+
+    var candidate = raw;
+    if (!candidate.contains('://')) {
+      final lower = candidate.toLowerCase();
+      final looksLikeIp = RegExp(
+        r'^\d{1,3}(\.\d{1,3}){3}(:\d+)?(/|$)',
+      ).hasMatch(lower);
+      final isLocal =
+          lower.startsWith('localhost') ||
+          lower.startsWith('127.0.0.1') ||
+          looksLikeIp;
+      candidate = '${isLocal ? 'http' : 'https'}://$candidate';
+    }
+
+    final uri = Uri.tryParse(candidate);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
+    final cleaned = uri.replace(queryParameters: const {}, fragment: '');
+    return cleaned.toString();
+  }
 
   Future<SharedPreferences> _p() async {
     final p = _prefs;
@@ -51,16 +76,19 @@ class SessionStore {
 
   Future<String> getBaseUrl() async {
     await _load();
-    final v = _baseUrl;
-    if (v != null && v.trim().isNotEmpty) {
-      return v.trim();
-    }
-    return 'https://wsmdev.greensh3ll.com';
+    final normalized = normalizeBaseUrl(_baseUrl ?? '');
+    return normalized ?? defaultBaseUrl;
   }
 
   Future<void> setBaseUrl(String baseUrl) async {
-    _baseUrl = baseUrl.trim();
     final p = await _p();
-    await p.setString(_kBaseUrl, _baseUrl!);
+    final normalized = normalizeBaseUrl(baseUrl);
+    if (normalized == null) {
+      _baseUrl = null;
+      await p.remove(_kBaseUrl);
+      return;
+    }
+    _baseUrl = normalized;
+    await p.setString(_kBaseUrl, normalized);
   }
 }

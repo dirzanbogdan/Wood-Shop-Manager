@@ -107,10 +107,22 @@ class _LoginPageState extends State<LoginPage> {
   void _showInstallDialog() {
     final directBaseUrl = _baseUrlCtrl.text.trim();
     final future = () async {
-      final baseUrl = directBaseUrl.isNotEmpty
-          ? directBaseUrl
-          : (await SessionStore.instance.getBaseUrl()).trim();
-      if (baseUrl.isNotEmpty && directBaseUrl.isNotEmpty) {
+      final normalizedDirect = SessionStore.normalizeBaseUrl(directBaseUrl);
+      if (directBaseUrl.isNotEmpty && normalizedDirect == null) {
+        return _InstallInfo(
+          baseUrl: directBaseUrl,
+          apkUrl: '',
+          currentVersion: '',
+          currentBuild: 0,
+          latestVersion: null,
+          latestBuild: null,
+          error: 'API Base URL invalid: $directBaseUrl',
+        );
+      }
+
+      final baseUrl =
+          (normalizedDirect ?? await SessionStore.instance.getBaseUrl()).trim();
+      if (baseUrl.isNotEmpty && normalizedDirect != null) {
         await SessionStore.instance.setBaseUrl(baseUrl);
       }
 
@@ -259,7 +271,18 @@ class _LoginPageState extends State<LoginPage> {
     final password = directPassword ?? _passwordCtrl.text;
     final baseUrl = _baseUrlCtrl.text.trim();
     if (baseUrl.isNotEmpty) {
-      await SessionStore.instance.setBaseUrl(baseUrl);
+      final normalized = SessionStore.normalizeBaseUrl(baseUrl);
+      if (normalized == null) {
+        setState(
+          () => _error =
+              'API Base URL invalid. Exemplu: ${SessionStore.defaultBaseUrl}',
+        );
+        return;
+      }
+      if (normalized != baseUrl) {
+        _baseUrlCtrl.text = normalized;
+      }
+      await SessionStore.instance.setBaseUrl(normalized);
     }
     if (username.isEmpty || password.isEmpty) {
       setState(() => _error = 'Completeaza username si parola.');
@@ -294,6 +317,14 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _resetBaseUrl() async {
+    final v = SessionStore.defaultBaseUrl;
+    _baseUrlCtrl.text = v;
+    await SessionStore.instance.setBaseUrl(v);
+    if (!mounted) return;
+    setState(() => _error = null);
   }
 
   void _onPasswordChanged(String _) {
@@ -470,14 +501,32 @@ class _LoginPageState extends State<LoginPage> {
                               keyboardType: TextInputType.url,
                             ),
                           ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _loading ? null : _resetBaseUrl,
+                              child: const Text('Reset la implicit'),
+                            ),
+                          ),
                         ],
                       ),
                       if (_error != null)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: Text(
-                            _error!,
-                            style: TextStyle(color: cs.error),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_error!, style: TextStyle(color: cs.error)),
+                              if (_error!.contains('domeniul') ||
+                                  _error!.contains('Base URL'))
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _loading ? null : _resetBaseUrl,
+                                    child: const Text('Reset Base URL'),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       SizedBox(

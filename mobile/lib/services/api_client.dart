@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
@@ -35,6 +36,26 @@ class ApiClient {
 
   static final ApiClient instance = ApiClient._();
 
+  ApiException _connError(Object e, Uri uri) {
+    if (e is SocketException) {
+      final msg = e.message;
+      final looksLikeDns = msg.contains('Failed host lookup') || msg.contains('No address associated with hostname');
+      if (looksLikeDns) {
+        return ApiException(
+          'Nu pot rezolva domeniul `${uri.host}`. Verifica "Setari conexiune" (Base URL) si conexiunea la internet.',
+        );
+      }
+      return ApiException('Nu ma pot conecta la server (${uri.host}): ${e.message}');
+    }
+    final raw = e.toString();
+    if (raw.contains('Failed host lookup') || raw.contains('No address associated with hostname')) {
+      return ApiException(
+        'Nu pot rezolva domeniul `${uri.host}`. Verifica "Setari conexiune" (Base URL) si conexiunea la internet.',
+      );
+    }
+    return ApiException('Nu ma pot conecta la server: $e');
+  }
+
   String _snippet(String text, {int max = 220}) {
     final t = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (t.length <= max) return t;
@@ -43,7 +64,12 @@ class ApiClient {
 
   Future<Uri> _uri(String route, [Map<String, String>? query]) async {
     final baseUrl = await SessionStore.instance.getBaseUrl();
-    final uri = Uri.parse(baseUrl);
+    final uri = Uri.tryParse(baseUrl);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      throw ApiException(
+        'API Base URL invalid. Deschide "Setari conexiune" si corecteaza.',
+      );
+    }
     final basePath = uri.path.isEmpty ? '/' : uri.path;
     final path = basePath.endsWith('/') ? basePath : '$basePath/';
     final merged = <String, String>{'r': route, ...(query ?? {})};
@@ -94,7 +120,7 @@ class ApiClient {
     try {
       res = await http.get(uri, headers: await _headers(json: true));
     } catch (e) {
-      throw ApiException('Nu ma pot conecta la server: $e');
+      throw _connError(e, uri);
     }
     final body = await _decode(res);
     if (body['ok'] == true) {
@@ -118,7 +144,7 @@ class ApiClient {
         body: jsonEncode(payload),
       );
     } catch (e) {
-      throw ApiException('Nu ma pot conecta la server: $e');
+      throw _connError(e, uri);
     }
     final body = await _decode(res);
     if (body['ok'] == true) {
