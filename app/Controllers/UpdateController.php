@@ -336,6 +336,23 @@ final class UpdateController extends Controller
         $env = $this->gitEnv($root);
         $allowedBranch = $this->updateGitBranch();
 
+        $apkFsPath = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'downloads' . DIRECTORY_SEPARATOR . 'wsm.apk';
+        $tmpDir = $root . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'tmp';
+        $apkBackupPath = $tmpDir . DIRECTORY_SEPARATOR . 'wsm.apk.backup';
+        $apkBackupOk = false;
+        clearstatcache(true, $apkFsPath);
+        if (is_file($apkFsPath)) {
+            $apkSize = filesize($apkFsPath);
+            if ($apkSize !== false && (int) $apkSize >= (1024 * 1024) && !$this->isGitLfsPointerFile($apkFsPath)) {
+                if (!is_dir($tmpDir)) {
+                    @mkdir($tmpDir, 0755, true);
+                }
+                if (is_dir($tmpDir)) {
+                    $apkBackupOk = @copy($apkFsPath, $apkBackupPath);
+                }
+            }
+        }
+
         $logs = [];
         $run = function (array $args, string $label) use ($root, $env, &$logs): array {
             $res = $this->runGit($args, $root, $env);
@@ -450,16 +467,28 @@ final class UpdateController extends Controller
             clearstatcache(true);
             $lfs = $run(['lfs', 'pull'], 'git lfs pull');
             $lfsCombined = trim((string) ($lfs['out'] ?? '') . "\n" . (string) ($lfs['err'] ?? ''));
+            $lfsMissing = false;
             if (
                 (($lfs['code'] ?? 0) !== 0)
                 && (preg_match("/git:\\s*'lfs'\\s+is\\s+not\\s+a\\s+git\\s+command/i", $lfsCombined) || preg_match('/unknown subcommand/i', $lfsCombined))
             ) {
+                $lfsMissing = true;
                 $msg = trim($msg . "\n\nATENTIE: `git lfs` nu este disponibil pe server. Fisierele mari (ex: `public/downloads/wsm.apk`) pot ramane doar pointer si nu vor fi descarcate.");
             }
 
-            $apkFsPath = $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'downloads' . DIRECTORY_SEPARATOR . 'wsm.apk';
             clearstatcache(true, $apkFsPath);
-            if ($this->isGitLfsPointerFile($apkFsPath)) {
+            $apkIsPointer = $this->isGitLfsPointerFile($apkFsPath);
+            $apkSizeNow = is_file($apkFsPath) ? filesize($apkFsPath) : false;
+            $needsRestore = $apkBackupOk && ($lfsMissing || $apkIsPointer || ($apkSizeNow !== false && (int) $apkSizeNow < (1024 * 1024)));
+            if ($needsRestore) {
+                if (@copy($apkBackupPath, $apkFsPath)) {
+                    clearstatcache(true, $apkFsPath);
+                    $apkIsPointer = $this->isGitLfsPointerFile($apkFsPath);
+                    $msg = trim($msg . "\n\nAPK: pastrat local (restore dupa update).");
+                }
+            }
+
+            if ($apkIsPointer) {
                 $msg = trim($msg . "\n\nATENTIE: `public/downloads/wsm.apk` este un pointer Git LFS (aprox. 134B), nu APK-ul real. Solutie: instaleaza `git lfs` pe server si ruleaza `git lfs pull`, sau incarca manual APK-ul in `public/downloads/wsm.apk`.");
             }
             if (function_exists('opcache_reset')) {
