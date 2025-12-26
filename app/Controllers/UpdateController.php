@@ -418,8 +418,8 @@ final class UpdateController extends Controller
             return $res;
         };
 
-        $trackedApk = $run(['ls-files', '--error-unmatch', 'public/downloads/wsm.apk'], 'git ls-files --error-unmatch public/downloads/wsm.apk');
-        if ((int) ($trackedApk['code'] ?? 1) === 0) {
+        $trackedApk = $run(['ls-files', '--', 'public/downloads/wsm.apk'], 'git ls-files -- public/downloads/wsm.apk');
+        if (trim((string) ($trackedApk['out'] ?? '')) !== '') {
             $run(['update-index', '--skip-worktree', 'public/downloads/wsm.apk'], 'git update-index --skip-worktree public/downloads/wsm.apk');
         }
 
