@@ -18,7 +18,8 @@
 - Mobile: card "Stocuri critice" in pagina Stoc (materiale sub min + produse fara stoc)
 - Mobile: validare/normalizare Base URL + mesaj mai clar pentru erori DNS la login
 - Mobile: sanitize Base URL (fara backticks/spatii) + autocorectie typo I/1 vs l pentru domeniu
-- Versiuni mobile: `1.0.9+10` (server `config/config.php` + APK `pubspec.yaml`)
+- Mobile: Android release include permisiunea INTERNET (fix pentru request-uri in APK release)
+- Versiuni mobile: `1.0.10+11` (server `config/config.php` + APK `pubspec.yaml`)
 
 ## 2025-12-25
 
