@@ -49,7 +49,8 @@ Acest fisier descrie modificarile si modul de testare pentru integrarea DEV (API
 ## Mobile (Login)
 ### UI/UX
 - Tema actualizata (culori + input-uri "filled" + card-uri) pentru a evita aspectul gri.
-- Versiune APK curenta: `1.0.3+4` (`mobile/pubspec.yaml`).
+- Card in Stoc: "Stocuri critice" (materiale sub minim + produse fara stoc).
+- Versiune APK curenta: `1.0.4+5` (`mobile/pubspec.yaml`).
 
 ### Parola
 - Toggle show/hide parola (icon-ul din dreapta campului).

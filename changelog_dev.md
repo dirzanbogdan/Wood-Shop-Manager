@@ -15,7 +15,8 @@
 - Mobile: autofill pentru username/parola + salvare in password manager dupa login
 - Mobile: login cu amprenta (biometric) dupa primul login cu user/parola
 - Mobile: refresh UI/UX (tema color, card-uri, formular login)
-- Versiuni mobile: `1.0.3+4` (server `config/config.php` + APK `pubspec.yaml`)
+- Mobile: card "Stocuri critice" in pagina Stoc (materiale sub min + produse fara stoc)
+- Versiuni mobile: `1.0.4+5` (server `config/config.php` + APK `pubspec.yaml`)
 
 ## 2025-12-25
 
