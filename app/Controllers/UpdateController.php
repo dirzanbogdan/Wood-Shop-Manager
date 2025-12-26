@@ -95,6 +95,155 @@ final class UpdateController extends Controller
         return trim($msg . "\n\nATENTIE: nu pot restaura APK-ul real dupa update (permisiuni / path).");
     }
 
+    private function mobileLatestRelPath(): string
+    {
+        $apkPath = (string) ($this->config['mobile']['apk_path'] ?? '/downloads/wsm.apk');
+        $apkPath = $apkPath !== '' ? '/' . ltrim($apkPath, '/') : '/downloads/wsm.apk';
+        if (!preg_match('/^\\/[A-Za-z0-9._\\/-]{1,255}$/', $apkPath)) {
+            $apkPath = '/downloads/wsm.apk';
+        }
+        return $apkPath;
+    }
+
+    private function publicDirPath(): ?string
+    {
+        $publicDir = realpath(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public');
+        if (!is_string($publicDir) || $publicDir === '') {
+            return null;
+        }
+        return $publicDir;
+    }
+
+    private function publicFsPathForRel(string $relPath): ?string
+    {
+        $publicDir = $this->publicDirPath();
+        if ($publicDir === null) {
+            return null;
+        }
+        $candidate = $publicDir . DIRECTORY_SEPARATOR . ltrim($relPath, '/');
+        $resolved = realpath($candidate);
+        if (!is_string($resolved) || $resolved === '' || !str_starts_with($resolved, $publicDir . DIRECTORY_SEPARATOR) || !is_file($resolved)) {
+            return null;
+        }
+        return $resolved;
+    }
+
+    private function absoluteUrl(string $path): string
+    {
+        $path = '/' . ltrim($path, '/');
+        $baseUrl = isset($this->config['app']['base_url']) ? rtrim((string) $this->config['app']['base_url'], '/') : '';
+        if ($baseUrl !== '') {
+            return $baseUrl . $path;
+        }
+        $host = isset($_SERVER['HTTP_HOST']) ? trim((string) $_SERVER['HTTP_HOST']) : '';
+        if ($host !== '') {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            return $scheme . '://' . $host . $path;
+        }
+        return $path;
+    }
+
+    private function downloadsDir(string $root): string
+    {
+        return $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'downloads';
+    }
+
+    private function listDownloadBuilds(string $root): array
+    {
+        $dir = $this->downloadsDir($root);
+        if (!is_dir($dir)) {
+            return [];
+        }
+        $items = scandir($dir);
+        if (!is_array($items)) {
+            return [];
+        }
+        $res = [];
+        foreach ($items as $name) {
+            $name = (string) $name;
+            if ($name === '' || $name === '.' || $name === '..') {
+                continue;
+            }
+            if (!preg_match('/^wsm(_[A-Za-z0-9._-]{1,120})?\\.[A-Za-z0-9]{1,10}$/', $name)) {
+                continue;
+            }
+            $p = $dir . DIRECTORY_SEPARATOR . $name;
+            if (!is_file($p)) {
+                continue;
+            }
+            clearstatcache(true, $p);
+            $size = filesize($p);
+            $mtime = filemtime($p);
+            $res[] = [
+                'name' => $name,
+                'size' => $size !== false ? (int) $size : null,
+                'mtime' => $mtime !== false ? (int) $mtime : null,
+                'url' => $this->absoluteUrl('/downloads/' . rawurlencode($name)),
+            ];
+        }
+        usort($res, static function (array $a, array $b): int {
+            $am = isset($a['mtime']) ? (int) $a['mtime'] : 0;
+            $bm = isset($b['mtime']) ? (int) $b['mtime'] : 0;
+            return $bm <=> $am;
+        });
+        return array_slice($res, 0, 30);
+    }
+
+    private function uploadMobileBuild(string $currentVersion): array
+    {
+        $root = $this->projectRoot();
+        $dir = $this->downloadsDir($root);
+        if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+            return ['ok' => false, 'message' => 'Nu pot crea directorul public/downloads.'];
+        }
+        if (!isset($_FILES['download_file']) || !is_array($_FILES['download_file'])) {
+            return ['ok' => false, 'message' => 'Lipseste fisierul uploadat.'];
+        }
+        $f = $_FILES['download_file'];
+        $err = isset($f['error']) ? (int) $f['error'] : UPLOAD_ERR_NO_FILE;
+        if ($err !== UPLOAD_ERR_OK) {
+            return ['ok' => false, 'message' => 'Upload esuat (cod ' . $err . ').'];
+        }
+        $tmp = isset($f['tmp_name']) ? (string) $f['tmp_name'] : '';
+        if ($tmp === '' || !is_uploaded_file($tmp)) {
+            return ['ok' => false, 'message' => 'Upload invalid.'];
+        }
+        $origName = isset($f['name']) ? (string) $f['name'] : '';
+        $ext = strtolower((string) pathinfo($origName, PATHINFO_EXTENSION));
+        $allowed = ['apk', 'aab', 'ipa', 'exe', 'msix'];
+        if ($ext === '' || !in_array($ext, $allowed, true)) {
+            return ['ok' => false, 'message' => 'Extensie invalida. Accept: ' . implode(', ', $allowed) . '.'];
+        }
+
+        $versionTag = preg_replace('/[^A-Za-z0-9._-]+/', '_', $currentVersion);
+        $versionTag = $versionTag !== '' ? $versionTag : gmdate('Ymd_His');
+
+        $latestName = 'wsm.' . $ext;
+        $latestPath = $dir . DIRECTORY_SEPARATOR . $latestName;
+        if (is_file($latestPath)) {
+            $archName = 'wsm_' . $versionTag . '.' . $ext;
+            $archPath = $dir . DIRECTORY_SEPARATOR . $archName;
+            if (is_file($archPath)) {
+                $archName = 'wsm_' . $versionTag . '_' . gmdate('Ymd_His') . '.' . $ext;
+                $archPath = $dir . DIRECTORY_SEPARATOR . $archName;
+            }
+            if (!@rename($latestPath, $archPath)) {
+                return ['ok' => false, 'message' => 'Nu pot arhiva build-ul anterior (' . $latestName . ').'];
+            }
+        }
+
+        if (!@move_uploaded_file($tmp, $latestPath)) {
+            return ['ok' => false, 'message' => 'Nu pot salva build-ul nou in public/downloads.'];
+        }
+        clearstatcache(true, $latestPath);
+        $size = filesize($latestPath);
+        $sizeOk = $size !== false ? (int) $size : 0;
+        if ($sizeOk > 0 && $sizeOk < (1024 * 1024)) {
+            return ['ok' => true, 'message' => 'Build uploadat, dar pare prea mic (sub 1MB). Verifica fisierul.'];
+        }
+        return ['ok' => true, 'message' => 'Build uploadat: /downloads/' . $latestName];
+    }
+
     public function index(): void
     {
         $this->requireAuth();
@@ -134,9 +283,31 @@ final class UpdateController extends Controller
         }
 
         $currentVersion = isset($this->config['app']['version']) ? (string) $this->config['app']['version'] : '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'upload_download') {
+            $res = $this->uploadMobileBuild($currentVersion);
+            Flash::set($res['ok'] ? 'success' : 'error', $res['message']);
+            $this->redirect('update/index');
+        }
+
         $git = $this->gitInfo();
         $changelog = $this->loadChangelog();
         $updateBranch = $this->updateGitBranch();
+
+        $apkRel = $this->mobileLatestRelPath();
+        $apkUrl = $this->absoluteUrl($apkRel);
+        $apkFsPath = $this->publicFsPathForRel($apkRel);
+        $apkSize = null;
+        $apkMtime = null;
+        $apkOk = null;
+        if ($apkFsPath !== null) {
+            clearstatcache(true, $apkFsPath);
+            $sz = filesize($apkFsPath);
+            $mt = filemtime($apkFsPath);
+            $apkSize = $sz !== false ? (int) $sz : null;
+            $apkMtime = $mt !== false ? (int) $mt : null;
+            $apkOk = $apkSize !== null && $apkSize >= (1024 * 1024);
+        }
+        $downloads = $this->listDownloadBuilds($this->projectRoot());
 
         $this->render('update/index', [
             'title' => 'Update',
@@ -146,6 +317,12 @@ final class UpdateController extends Controller
             'git_info' => $git,
             'changelog' => $changelog,
             'update_git_branch' => $updateBranch,
+            'apk_rel' => $apkRel,
+            'apk_url' => $apkUrl,
+            'apk_size' => $apkSize,
+            'apk_mtime' => $apkMtime,
+            'apk_ok' => $apkOk,
+            'downloads' => $downloads,
         ]);
     }
 

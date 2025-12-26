@@ -5,6 +5,20 @@ declare(strict_types=1);
 $esc = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
 $gitAvailable = isset($git_info) && is_array($git_info) && ($git_info['available'] ?? false) === true;
 $canShell = $gitAvailable && (($git_info['can_shell'] ?? false) === true);
+$fmtSize = static function (?int $bytes): string {
+  if ($bytes === null || $bytes < 0) {
+    return '-';
+  }
+  $units = ['B', 'KB', 'MB', 'GB'];
+  $v = (float) $bytes;
+  $i = 0;
+  while ($v >= 1024 && $i < count($units) - 1) {
+    $v /= 1024;
+    $i++;
+  }
+  $dec = $i === 0 ? 0 : 1;
+  return number_format($v, $dec, '.', '') . ' ' . $units[$i];
+};
 ?>
 
 <div class="card">
@@ -87,6 +101,54 @@ $canShell = $gitAvailable && (($git_info['can_shell'] ?? false) === true);
           <button class="btn danger" type="submit" onclick="return confirm('Aplici update din arhiva GitHub peste fisierele curente?');">Aplica update (arhiva GitHub)</button>
         </form>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid" style="margin-top: 12px">
+  <div class="col-12">
+    <div class="card">
+      <h3 style="margin-top:0">APK / downloads</h3>
+      <div class="muted">Ultima versiune (link fix): <a href="<?= $esc((string) ($apk_url ?? '')) ?>"><?= $esc((string) ($apk_rel ?? '')) ?></a></div>
+      <div class="muted">
+        Status: <?= (($apk_ok ?? null) === true) ? 'OK' : 'Lipseste / invalid' ?>
+        · Marime: <?= $esc($fmtSize(isset($apk_size) ? (is_int($apk_size) ? $apk_size : null) : null)) ?>
+        <?php if (isset($apk_mtime) && is_int($apk_mtime) && $apk_mtime > 0): ?>
+          · Actualizat: <?= $esc(date('Y-m-d H:i:s', $apk_mtime)) ?>
+        <?php endif; ?>
+      </div>
+
+      <div style="margin-top: 10px">
+        <form method="post" enctype="multipart/form-data" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+          <input type="hidden" name="<?= $esc((string) ($csrf_key ?? 'csrf_token')) ?>" value="<?= $esc((string) ($csrf ?? '')) ?>">
+          <input type="hidden" name="action" value="upload_download">
+          <input type="file" name="download_file" required>
+          <button class="btn primary" type="submit">Upload build nou</button>
+        </form>
+        <div class="muted" style="margin-top:8px">La upload, fisierul existent <code>wsm.&lt;ext&gt;</code> este redenumit automat in <code>wsm_&lt;versiune_curenta&gt;.&lt;ext&gt;</code>.</div>
+      </div>
+
+      <?php if (isset($downloads) && is_array($downloads) && $downloads): ?>
+        <div style="margin-top:12px">
+          <div class="muted">Build-uri in <code>public/downloads</code>:</div>
+          <ul style="margin: 8px 0 0 18px">
+            <?php foreach ($downloads as $d): ?>
+              <?php
+                $name = isset($d['name']) ? (string) $d['name'] : '';
+                $url = isset($d['url']) ? (string) $d['url'] : '';
+                $size = isset($d['size']) ? (is_int($d['size']) ? $d['size'] : null) : null;
+                $mtime = isset($d['mtime']) ? (is_int($d['mtime']) ? $d['mtime'] : null) : null;
+              ?>
+              <li>
+                <a href="<?= $esc($url) ?>"><?= $esc($name) ?></a>
+                <span class="muted">(<?= $esc($fmtSize($size)) ?><?= $mtime ? ', ' . $esc(date('Y-m-d H:i:s', $mtime)) : '' ?>)</span>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+      <?php else: ?>
+        <div class="muted" style="margin-top:12px">Nu exista fisiere in <code>public/downloads</code>.</div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
