@@ -583,11 +583,33 @@ final class UpdateController extends Controller
         $apkBackup = $this->backupApkIfPresent($root);
 
         $logs = [];
-        $run = function (array $args, string $label) use ($root, $env, &$logs): array {
+        $stripMobileStatus = static function (string $out): string {
+            $out = trim($out);
+            if ($out === '') {
+                return '';
+            }
+            $lines = preg_split("/\r?\n/", $out);
+            $keep = [];
+            foreach ($lines as $line) {
+                $line = trim((string) $line);
+                if ($line === '') {
+                    continue;
+                }
+                if (preg_match('/\s+mobile\//', $line)) {
+                    continue;
+                }
+                $keep[] = $line;
+            }
+            return implode("\n", $keep);
+        };
+        $run = function (array $args, string $label) use ($root, $env, &$logs, $stripMobileStatus): array {
             $res = $this->runGit($args, $root, $env);
             $code = (string) ($res['code'] ?? '');
             $out = (string) ($res['out'] ?? '');
             $err = (string) ($res['err'] ?? '');
+            if (str_contains($label, 'git status --porcelain')) {
+                $out = $stripMobileStatus($out);
+            }
             $logs[] = '=== ' . $label . ' ==='
                 . "\nexit=" . $code
                 . "\nOUT:\n" . ($out !== '' ? $out : '-')
@@ -726,24 +748,47 @@ final class UpdateController extends Controller
             $porcelain = trim((string) ($status['out'] ?? ''));
             if ($porcelain !== '') {
                 $cleanupReset = $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (cleanup)');
-                $status2 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after cleanup)');
-                $porcelain2raw = trim((string) ($status2['out'] ?? ''));
-                $porcelain2 = $porcelain2raw;
-                if ($porcelain2 !== '') {
-                    $lines = preg_split("/\r?\n/", $porcelain2);
-                    $keep = [];
-                    foreach ($lines as $line) {
-                        $line = trim((string) $line);
-                        if ($line === '') {
-                            continue;
-                        }
-                        if (preg_match('/\s+mobile\//', $line)) {
-                            continue;
-                        }
-                        $keep[] = $line;
+            $status2 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after cleanup)');
+            $porcelain2raw = trim((string) ($status2['out'] ?? ''));
+            $porcelain2 = $porcelain2raw;
+            $mobilePaths = [];
+            $allMobile = true;
+            if ($porcelain2 !== '') {
+                $lines = preg_split("/\r?\n/", $porcelain2);
+                $keep = [];
+                foreach ($lines as $line) {
+                    $line = trim((string) $line);
+                    if ($line === '') {
+                        continue;
                     }
-                    $porcelain2 = implode("\n", $keep);
+                    $path = null;
+                    if (preg_match('/^[ MADRCU?!]{1}[ MADRCU?!]{1}\s+(.+)$/', $line, $m)) {
+                        $path = trim((string) ($m[1] ?? ''));
+                        if (str_contains($path, ' -> ')) {
+                            $parts = explode(' -> ', $path);
+                            $path = trim((string) end($parts));
+                        }
+                    }
+                    if ($path !== null && $path !== '' && str_starts_with($path, 'mobile/')) {
+                        $mobilePaths[] = $path;
+                        continue;
+                    }
+                    $allMobile = false;
+                    $keep[] = $line;
                 }
+                $porcelain2 = implode("\n", $keep);
+            }
+
+            if ($porcelain2raw !== '' && $allMobile && $mobilePaths) {
+                $args = array_merge(['update-index', '--skip-worktree', '--'], $mobilePaths);
+                $run($args, 'git update-index --skip-worktree -- mobile/* (auto)');
+                $status3 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after skip-worktree)');
+                $porcelain3raw = trim((string) ($status3['out'] ?? ''));
+                $porcelain3 = $stripMobileStatus($porcelain3raw);
+                if ($porcelain3 !== '') {
+                    $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain3);
+                }
+            } else {
                 if ($porcelain2 !== '') {
                     $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain2);
                 } elseif (($cleanupReset['code'] ?? 1) !== 0) {
@@ -754,6 +799,7 @@ final class UpdateController extends Controller
                 }
             }
         }
+    }
 
         if ($logs) {
             $msg = trim($msg . "\n\n---\nLOGS:\n" . implode("\n\n", $logs));
