@@ -1,9 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../services/api_client.dart';
 import '../services/session_store.dart';
 import 'home_page.dart';
+
+class _InstallInfo {
+  _InstallInfo({
+    required this.baseUrl,
+    required this.apkUrl,
+    required this.currentVersion,
+    required this.currentBuild,
+    required this.latestVersion,
+    required this.latestBuild,
+    required this.error,
+  });
+
+  final String baseUrl;
+  final String apkUrl;
+  final String currentVersion;
+  final int currentBuild;
+  final String? latestVersion;
+  final int? latestBuild;
+  final String? error;
+
+  bool get hasUpdate => latestBuild != null && latestBuild! > currentBuild;
+}
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -43,17 +66,61 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showInstallDialog() {
     final directBaseUrl = _baseUrlCtrl.text.trim();
-    final baseUrlFuture =
-        directBaseUrl.isNotEmpty ? Future.value(directBaseUrl) : SessionStore.instance.getBaseUrl();
+    final future = () async {
+      final baseUrl = directBaseUrl.isNotEmpty ? directBaseUrl : (await SessionStore.instance.getBaseUrl()).trim();
+      if (baseUrl.isNotEmpty && directBaseUrl.isNotEmpty) {
+        await SessionStore.instance.setBaseUrl(baseUrl);
+      }
+
+      final apkUrlFallback = baseUrl.isEmpty ? '' : _apkUrlFromBaseUrl(baseUrl);
+
+      final pkg = await PackageInfo.fromPlatform();
+      final currentVersion = pkg.version;
+      final currentBuild = int.tryParse(pkg.buildNumber) ?? 0;
+
+      String? latestVersion;
+      int? latestBuild;
+      String apkUrl = apkUrlFallback;
+      String? error;
+
+      try {
+        final res = await ApiClient.instance.appVersion();
+        final data = res['data'];
+        if (data is Map<String, dynamic>) {
+          latestVersion = (data['latest_version'] is String) ? data['latest_version'] as String : null;
+          latestBuild = apiInt(data['latest_build'], fallback: 0);
+          if (latestBuild == 0) latestBuild = null;
+          final remoteApkUrl = (data['apk_url'] is String) ? (data['apk_url'] as String).trim() : '';
+          if (remoteApkUrl.isNotEmpty) {
+            apkUrl = remoteApkUrl;
+          }
+        }
+      } on ApiException catch (e) {
+        error = e.message;
+      } catch (e) {
+        error = e.toString();
+      }
+
+      return _InstallInfo(
+        baseUrl: baseUrl,
+        apkUrl: apkUrl,
+        currentVersion: currentVersion,
+        currentBuild: currentBuild,
+        latestVersion: latestVersion,
+        latestBuild: latestBuild,
+        error: error,
+      );
+    }();
 
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => FutureBuilder<String>(
-        future: baseUrlFuture,
+      builder: (dialogContext) => FutureBuilder<_InstallInfo>(
+        future: future,
         builder: (context, snapshot) {
           final loading = snapshot.connectionState != ConnectionState.done;
-          final baseUrl = (snapshot.data ?? '').trim();
-          final apkUrl = baseUrl.isEmpty ? '' : _apkUrlFromBaseUrl(baseUrl);
+          final info = snapshot.data;
+          final apkUrl = info?.apkUrl ?? '';
+          final hasUpdate = info?.hasUpdate == true;
 
           return AlertDialog(
             title: const Text('Instalare APK'),
@@ -66,10 +133,22 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Varianta 1: descarci direct pe telefon (recomandat).'),
+                      Text(
+                        info == null
+                            ? 'Nu pot incarca informatii.'
+                            : 'Versiune instalata: ${info.currentVersion} (${info.currentBuild})',
+                      ),
+                      const SizedBox(height: 8),
+                      if (info?.error != null) Text('Nu pot verifica update: ${info!.error}'),
+                      if (info?.error == null)
+                        Text(
+                          'Versiune server: ${(info?.latestVersion ?? '-') } (${info?.latestBuild?.toString() ?? '-'})',
+                        ),
                       const SizedBox(height: 8),
                       Text(
-                        apkUrl.isEmpty ? 'Seteaza API Base URL ca sa genereze un link.' : 'Link: $apkUrl',
+                        apkUrl.isEmpty
+                            ? 'Seteaza API Base URL ca sa genereze un link.'
+                            : (hasUpdate ? 'Update disponibil. Link: $apkUrl' : 'Link: $apkUrl'),
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -82,6 +161,14 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
             actions: [
+              if (!loading && apkUrl.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    SystemLauncher.openUrl(apkUrl);
+                    Navigator.pop(dialogContext);
+                  },
+                  child: Text(hasUpdate ? 'Descarca update' : 'Deschide link'),
+                ),
               if (!loading && apkUrl.isNotEmpty)
                 TextButton(
                   onPressed: () {

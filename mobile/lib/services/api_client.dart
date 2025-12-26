@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 import 'session_store.dart';
 
@@ -142,5 +143,19 @@ class ApiClient {
       throw ApiException('Missing token in response');
     }
     await SessionStore.instance.setToken(token);
+  }
+
+  Future<Map<String, dynamic>> appVersion() async {
+    return get('api/v1AppVersion');
+  }
+}
+
+class SystemLauncher {
+  static const MethodChannel _channel = MethodChannel('wsm_mobile/system');
+
+  static Future<void> openUrl(String url) async {
+    final u = url.trim();
+    if (u.isEmpty) return;
+    await _channel.invokeMethod('openUrl', {'url': u});
   }
 }

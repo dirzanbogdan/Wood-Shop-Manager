@@ -29,6 +29,11 @@ $base = [
         'cors_allowed_origins' => ['*'],
         'cors_allow_credentials' => false,
     ],
+    'mobile' => [
+        'apk_path' => '/downloads/wsm.apk',
+        'latest_version' => '1.0.0',
+        'latest_build' => 1,
+    ],
     'update' => [
         'git_branch' => 'main',
     ],

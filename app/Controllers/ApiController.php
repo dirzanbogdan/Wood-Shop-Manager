@@ -144,6 +144,25 @@ final class ApiController extends Controller
                 return trim((string) $_SERVER[$k]);
             }
         }
+
+        if (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (is_array($headers)) {
+                $normalized = [];
+                foreach ($headers as $k => $v) {
+                    if (!is_string($k)) {
+                        continue;
+                    }
+                    $normalized[strtolower($k)] = is_string($v) ? trim($v) : trim((string) $v);
+                }
+                $keys = ['authorization', 'x-authorization', 'x-access-token'];
+                foreach ($keys as $k) {
+                    if (isset($normalized[$k]) && $normalized[$k] !== '') {
+                        return $normalized[$k];
+                    }
+                }
+            }
+        }
         return '';
     }
 
@@ -367,6 +386,51 @@ final class ApiController extends Controller
         }
 
         $this->ok(['csrf_key' => $csrfKey, 'csrf_token' => CSRF::token($csrfKey)]);
+    }
+
+    public function v1AppVersion(): void
+    {
+        $this->preflight();
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            $this->failExit('Method not allowed', 405, 'method_not_allowed');
+        }
+
+        $apkPath = (string) ($this->config['mobile']['apk_path'] ?? '/downloads/wsm.apk');
+        $apkPath = $apkPath !== '' ? '/' . ltrim($apkPath, '/') : '/downloads/wsm.apk';
+
+        $latestVersion = (string) ($this->config['mobile']['latest_version'] ?? '');
+        $latestBuild = (int) ($this->config['mobile']['latest_build'] ?? 0);
+
+        $publicDir = realpath(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public');
+        $apkFsPath = null;
+        if (is_string($publicDir) && $publicDir !== '') {
+            $candidate = $publicDir . DIRECTORY_SEPARATOR . ltrim($apkPath, '/');
+            $resolved = realpath($candidate);
+            if (is_string($resolved) && $resolved !== '' && str_starts_with($resolved, $publicDir . DIRECTORY_SEPARATOR) && is_file($resolved)) {
+                $apkFsPath = $resolved;
+            }
+        }
+
+        $baseUrl = isset($this->config['app']['base_url']) ? rtrim((string) $this->config['app']['base_url'], '/') : '';
+        $apkUrl = $apkPath;
+        if ($baseUrl !== '') {
+            $apkUrl = $baseUrl . $apkPath;
+        } else {
+            $host = isset($_SERVER['HTTP_HOST']) ? trim((string) $_SERVER['HTTP_HOST']) : '';
+            if ($host !== '') {
+                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $apkUrl = $scheme . '://' . $host . $apkPath;
+            }
+        }
+
+        $this->ok([
+            'latest_version' => $latestVersion !== '' ? $latestVersion : null,
+            'latest_build' => $latestBuild > 0 ? $latestBuild : null,
+            'apk_path' => $apkPath,
+            'apk_url' => $apkUrl,
+            'apk_size' => $apkFsPath !== null ? filesize($apkFsPath) : null,
+            'apk_updated_at' => $apkFsPath !== null ? gmdate('c', (int) filemtime($apkFsPath)) : null,
+        ]);
     }
 
     public function v1Login(): void

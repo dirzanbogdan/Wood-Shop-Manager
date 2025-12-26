@@ -20,6 +20,7 @@ declare(strict_types=1);
       </form>
       <p class="muted" style="margin-bottom:0;margin-top:14px">
         Daca nu este instalat, deschide <code>/install.php</code>.
+        <br>Descarca aplicatia mobila: <a href="/downloads/wsm.apk">wsm.apk</a>
       </p>
     </div>
   </div>
