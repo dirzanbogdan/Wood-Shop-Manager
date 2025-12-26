@@ -34,8 +34,15 @@ class SessionStore {
 
     final uri = Uri.tryParse(candidate);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
-    final cleaned = uri.replace(queryParameters: const {}, fragment: '');
-    return cleaned.toString();
+    final cleaned = Uri(
+      scheme: uri.scheme,
+      userInfo: uri.userInfo,
+      host: uri.host,
+      port: uri.hasPort ? uri.port : null,
+      path: uri.path,
+    );
+    final s = cleaned.toString();
+    return s.endsWith('/') ? s.substring(0, s.length - 1) : s;
   }
 
   Future<SharedPreferences> _p() async {
@@ -76,8 +83,15 @@ class SessionStore {
 
   Future<String> getBaseUrl() async {
     await _load();
-    final normalized = normalizeBaseUrl(_baseUrl ?? '');
-    return normalized ?? defaultBaseUrl;
+    final current = (_baseUrl ?? '').trim();
+    final normalized = normalizeBaseUrl(current);
+    if (normalized == null) return defaultBaseUrl;
+    if (normalized != current) {
+      _baseUrl = normalized;
+      final p = await _p();
+      await p.setString(_kBaseUrl, normalized);
+    }
+    return normalized;
   }
 
   Future<void> setBaseUrl(String baseUrl) async {
