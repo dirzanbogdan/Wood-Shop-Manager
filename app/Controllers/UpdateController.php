@@ -431,6 +431,14 @@ final class UpdateController extends Controller
 
         if ($ok) {
             clearstatcache(true);
+            $lfs = $run(['lfs', 'pull'], 'git lfs pull');
+            $lfsCombined = trim((string) ($lfs['out'] ?? '') . "\n" . (string) ($lfs['err'] ?? ''));
+            if (
+                (($lfs['code'] ?? 0) !== 0)
+                && (preg_match("/git:\\s*'lfs'\\s+is\\s+not\\s+a\\s+git\\s+command/i", $lfsCombined) || preg_match('/unknown subcommand/i', $lfsCombined))
+            ) {
+                $msg = trim($msg . "\n\nATENTIE: `git lfs` nu este disponibil pe server. Fisierele mari (ex: `public/downloads/wsm.apk`) pot ramane doar pointer si nu vor fi descarcate.");
+            }
             if (function_exists('opcache_reset')) {
                 @opcache_reset();
             }
@@ -508,6 +516,7 @@ final class UpdateController extends Controller
             'config/local.php',
             'storage',
             '.git',
+            'public/downloads',
         ];
         $copyRes = $this->copyTree($srcRoot, $root, $exclude);
         if (!$copyRes['ok']) {
