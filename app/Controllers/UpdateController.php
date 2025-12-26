@@ -548,11 +548,32 @@ final class UpdateController extends Controller
             $status = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no');
             $porcelain = trim((string) ($status['out'] ?? ''));
             if ($porcelain !== '') {
-                $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (cleanup)');
+                $cleanupReset = $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (cleanup)');
                 $status2 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after cleanup)');
-                $porcelain2 = trim((string) ($status2['out'] ?? ''));
+                $porcelain2raw = trim((string) ($status2['out'] ?? ''));
+                $porcelain2 = $porcelain2raw;
+                if ($porcelain2 !== '') {
+                    $lines = preg_split("/\r?\n/", $porcelain2);
+                    $keep = [];
+                    foreach ($lines as $line) {
+                        $line = trim((string) $line);
+                        if ($line === '') {
+                            continue;
+                        }
+                        if (preg_match('/\s+mobile\//', $line)) {
+                            continue;
+                        }
+                        $keep[] = $line;
+                    }
+                    $porcelain2 = implode("\n", $keep);
+                }
                 if ($porcelain2 !== '') {
                     $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain2);
+                } elseif (($cleanupReset['code'] ?? 1) !== 0) {
+                    $resetOut = trim((string) ($cleanupReset['out'] ?? '') . "\n" . (string) ($cleanupReset['err'] ?? ''));
+                    if ($resetOut !== '') {
+                        $msg = trim($msg . "\nATENTIE: cleanup git reset --hard HEAD a esuat:\n" . $resetOut);
+                    }
                 }
             }
         }

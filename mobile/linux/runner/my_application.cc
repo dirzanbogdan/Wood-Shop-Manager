@@ -1,5 +1,7 @@
 #include "my_application.h"
 
+#if WSM_HAS_GTK
+#if !defined(__has_include) || __has_include(<flutter_linux/flutter_linux.h>)
 #include <flutter_linux/flutter_linux.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -146,3 +148,7 @@ MyApplication* my_application_new() {
                                      "application-id", APPLICATION_ID, "flags",
                                      G_APPLICATION_NON_UNIQUE, nullptr));
 }
+#else
+MyApplication* my_application_new() { return nullptr; }
+#endif
+#endif
