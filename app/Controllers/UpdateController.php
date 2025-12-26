@@ -16,31 +16,52 @@ final class UpdateController extends Controller
         return $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'downloads' . DIRECTORY_SEPARATOR . 'wsm.apk';
     }
 
-    private function backupApkIfPresent(string $root): array
+    private function apkBackupPath(string $root): ?string
     {
-        $apkFsPath = $this->apkFsPath($root);
-        clearstatcache(true, $apkFsPath);
-        if (!is_file($apkFsPath)) {
-            return ['ok' => false, 'path' => null, 'reason' => 'missing'];
-        }
-        $size = filesize($apkFsPath);
-        if ($size === false || (int) $size < (1024 * 1024)) {
-            return ['ok' => false, 'path' => null, 'reason' => 'too_small'];
-        }
-
         $tmpDir = $root . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'tmp';
         if (!is_dir($tmpDir)) {
             @mkdir($tmpDir, 0755, true);
         }
         $backupDir = is_dir($tmpDir) ? $tmpDir : rtrim((string) sys_get_temp_dir(), "\\/");
         if ($backupDir === '') {
+            return null;
+        }
+        return $backupDir . DIRECTORY_SEPARATOR . 'wsm.apk.backup';
+    }
+
+    private function apkLooksValid(string $path): bool
+    {
+        if (!is_file($path)) {
+            return false;
+        }
+        clearstatcache(true, $path);
+        $size = filesize($path);
+        return $size !== false && (int) $size >= (1024 * 1024);
+    }
+
+    private function backupApkIfPresent(string $root): array
+    {
+        $apkFsPath = $this->apkFsPath($root);
+        $backupPath = $this->apkBackupPath($root);
+        if ($backupPath === null) {
             return ['ok' => false, 'path' => null, 'reason' => 'no_tmp'];
         }
-        $backupPath = $backupDir . DIRECTORY_SEPARATOR . 'wsm.apk.backup';
-        if (@copy($apkFsPath, $backupPath)) {
-            return ['ok' => true, 'path' => $backupPath, 'reason' => null];
+
+        if ($this->apkLooksValid($apkFsPath)) {
+            if (@copy($apkFsPath, $backupPath)) {
+                return ['ok' => true, 'path' => $backupPath, 'reason' => 'fresh_copy'];
+            }
+            if ($this->apkLooksValid($backupPath)) {
+                return ['ok' => true, 'path' => $backupPath, 'reason' => 'existing_backup'];
+            }
+            return ['ok' => false, 'path' => null, 'reason' => 'copy_failed'];
         }
-        return ['ok' => false, 'path' => null, 'reason' => 'copy_failed'];
+
+        if ($this->apkLooksValid($backupPath)) {
+            return ['ok' => true, 'path' => $backupPath, 'reason' => 'existing_backup'];
+        }
+
+        return ['ok' => false, 'path' => null, 'reason' => is_file($apkFsPath) ? 'too_small' : 'missing'];
     }
 
     private function restoreApkIfNeeded(string $root, array $backup, string $msg): string
@@ -50,11 +71,18 @@ final class UpdateController extends Controller
         if (!$backupOk) {
             return $msg;
         }
+        if (!$this->apkLooksValid($backupPath)) {
+            return $msg;
+        }
 
         $apkFsPath = $this->apkFsPath($root);
+        $apkDir = dirname($apkFsPath);
+        if (!is_dir($apkDir)) {
+            @mkdir($apkDir, 0755, true);
+        }
         clearstatcache(true, $apkFsPath);
         $apkSizeNow = is_file($apkFsPath) ? filesize($apkFsPath) : false;
-        $needsRestore = ($apkSizeNow !== false && (int) $apkSizeNow < (1024 * 1024));
+        $needsRestore = ($apkSizeNow === false) || ((int) $apkSizeNow < (1024 * 1024));
         if (!$needsRestore) {
             return $msg;
         }
