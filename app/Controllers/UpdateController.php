@@ -591,14 +591,22 @@ final class UpdateController extends Controller
             $lines = preg_split("/\r?\n/", $out);
             $keep = [];
             foreach ($lines as $line) {
-                $line = trim((string) $line);
+                $line = rtrim((string) $line);
                 if ($line === '') {
                     continue;
                 }
-                if (preg_match('/\s+mobile\//', $line)) {
+                $path = null;
+                if (preg_match('/^(?:[ MADRCU?!]{2}|[MADRCU?!])\s+(.+)$/', $line, $m)) {
+                    $path = trim((string) ($m[1] ?? ''));
+                    if (str_contains($path, ' -> ')) {
+                        $parts = explode(' -> ', $path);
+                        $path = trim((string) end($parts));
+                    }
+                }
+                if ($path !== null && $path !== '' && str_starts_with($path, 'mobile/')) {
                     continue;
                 }
-                $keep[] = $line;
+                $keep[] = trim($line);
             }
             return implode("\n", $keep);
         };
@@ -608,7 +616,9 @@ final class UpdateController extends Controller
             $out = (string) ($res['out'] ?? '');
             $err = (string) ($res['err'] ?? '');
             if (str_contains($label, 'git status --porcelain')) {
+                $res['out_raw'] = $out;
                 $out = $stripMobileStatus($out);
+                $res['out'] = $out;
             }
             $logs[] = '=== ' . $label . ' ==='
                 . "\nexit=" . $code
@@ -744,25 +754,20 @@ final class UpdateController extends Controller
                 }
             }
 
-            $status = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no');
-            $porcelain = trim((string) ($status['out'] ?? ''));
-            if ($porcelain !== '') {
-                $cleanupReset = $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (cleanup)');
-            $status2 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after cleanup)');
-            $porcelain2raw = trim((string) ($status2['out'] ?? ''));
-            $porcelain2 = $porcelain2raw;
-            $mobilePaths = [];
-            $allMobile = true;
-            if ($porcelain2 !== '') {
-                $lines = preg_split("/\r?\n/", $porcelain2);
-                $keep = [];
+            $extractMobilePaths = static function (string $porcelainRaw): array {
+                $porcelainRaw = trim($porcelainRaw);
+                if ($porcelainRaw === '') {
+                    return [];
+                }
+                $lines = preg_split("/\r?\n/", $porcelainRaw);
+                $paths = [];
                 foreach ($lines as $line) {
-                    $line = trim((string) $line);
+                    $line = rtrim((string) $line);
                     if ($line === '') {
                         continue;
                     }
                     $path = null;
-                    if (preg_match('/^[ MADRCU?!]{1}[ MADRCU?!]{1}\s+(.+)$/', $line, $m)) {
+                    if (preg_match('/^(?:[ MADRCU?!]{2}|[MADRCU?!])\s+(.+)$/', $line, $m)) {
                         $path = trim((string) ($m[1] ?? ''));
                         if (str_contains($path, ' -> ')) {
                             $parts = explode(' -> ', $path);
@@ -770,36 +775,56 @@ final class UpdateController extends Controller
                         }
                     }
                     if ($path !== null && $path !== '' && str_starts_with($path, 'mobile/')) {
-                        $mobilePaths[] = $path;
-                        continue;
+                        $paths[] = $path;
                     }
-                    $allMobile = false;
-                    $keep[] = $line;
                 }
-                $porcelain2 = implode("\n", $keep);
-            }
+                return array_values(array_unique($paths));
+            };
 
-            if ($porcelain2raw !== '' && $allMobile && $mobilePaths) {
-                $args = array_merge(['update-index', '--skip-worktree', '--'], $mobilePaths);
-                $run($args, 'git update-index --skip-worktree -- mobile/* (auto)');
-                $status3 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after skip-worktree)');
-                $porcelain3raw = trim((string) ($status3['out'] ?? ''));
-                $porcelain3 = $stripMobileStatus($porcelain3raw);
-                if ($porcelain3 !== '') {
-                    $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain3);
-                }
-            } else {
-                if ($porcelain2 !== '') {
-                    $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain2);
-                } elseif (($cleanupReset['code'] ?? 1) !== 0) {
-                    $resetOut = trim((string) ($cleanupReset['out'] ?? '') . "\n" . (string) ($cleanupReset['err'] ?? ''));
-                    if ($resetOut !== '') {
-                        $msg = trim($msg . "\nATENTIE: cleanup git reset --hard HEAD a esuat:\n" . $resetOut);
+            $status = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no');
+            $porcelainNonMobile = trim((string) ($status['out'] ?? ''));
+            $porcelainAll = trim((string) ($status['out_raw'] ?? ''));
+
+            if ($porcelainAll !== '') {
+                if ($porcelainNonMobile !== '') {
+                    $cleanupReset = $run(['reset', '--hard', 'HEAD'], 'git reset --hard HEAD (cleanup)');
+                    $status2 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after cleanup)');
+                    $porcelain2NonMobile = trim((string) ($status2['out'] ?? ''));
+                    $porcelain2All = trim((string) ($status2['out_raw'] ?? ''));
+
+                    if ($porcelain2NonMobile !== '') {
+                        $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain2NonMobile);
+                    } elseif ($porcelain2All !== '') {
+                        $mobilePaths = $extractMobilePaths($porcelain2All);
+                        if ($mobilePaths) {
+                            $args = array_merge(['update-index', '--skip-worktree', '--'], $mobilePaths);
+                            $run($args, 'git update-index --skip-worktree -- mobile/* (auto)');
+                        }
+                        $status3 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after skip-worktree)');
+                        $porcelain3NonMobile = trim((string) ($status3['out'] ?? ''));
+                        if ($porcelain3NonMobile !== '') {
+                            $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain3NonMobile);
+                        }
+                    } elseif (($cleanupReset['code'] ?? 1) !== 0) {
+                        $resetOut = trim((string) ($cleanupReset['out'] ?? '') . "\n" . (string) ($cleanupReset['err'] ?? ''));
+                        if ($resetOut !== '') {
+                            $msg = trim($msg . "\nATENTIE: cleanup git reset --hard HEAD a esuat:\n" . $resetOut);
+                        }
+                    }
+                } else {
+                    $mobilePaths = $extractMobilePaths($porcelainAll);
+                    if ($mobilePaths) {
+                        $args = array_merge(['update-index', '--skip-worktree', '--'], $mobilePaths);
+                        $run($args, 'git update-index --skip-worktree -- mobile/* (auto)');
+                    }
+                    $status3 = $run(['status', '--porcelain', '--untracked-files=no'], 'git status --porcelain --untracked-files=no (after skip-worktree)');
+                    $porcelain3NonMobile = trim((string) ($status3['out'] ?? ''));
+                    if ($porcelain3NonMobile !== '') {
+                        $msg = trim($msg . "\nATENTIE: exista modificari locale in repo (git status --porcelain):\n" . $porcelain3NonMobile);
                     }
                 }
             }
         }
-    }
 
         if ($logs) {
             $msg = trim($msg . "\n\n---\nLOGS:\n" . implode("\n\n", $logs));
