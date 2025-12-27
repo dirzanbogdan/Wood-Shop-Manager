@@ -7,6 +7,7 @@
 - Update: nu mai blochează update-ul când există modificări locale doar în `mobile/*` (auto skip-worktree)
 - Update: mesaje mai clare când upload-ul depășește limitele PHP (`post_max_size` / `upload_max_filesize`)
 - UI: în listele de unități apare codul + denumirea (ex: `kg (Kilogram)`)
+- Fix: Raport „Profit estimat”: vânzările rămân la prețurile efective (istoric) după schimbarea prețului produsului
 
 ## v3.27122025.001
 
