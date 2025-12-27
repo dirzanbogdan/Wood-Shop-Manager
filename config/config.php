@@ -8,7 +8,7 @@ $base = [
         'base_url' => '',
         'session_name' => 'gsh3ll_wsm',
         'version_major' => 3,
-        'version_minor' => 1,
+        'version_minor' => 2,
         'version_date' => '27122025',
     ],
     'db' => [
