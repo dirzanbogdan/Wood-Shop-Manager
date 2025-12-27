@@ -163,7 +163,7 @@ final class MaterialsController extends Controller
                 if ($existing) {
                     if ($conflictAction !== 'overwrite') {
                         $types = $this->pdo->query("SELECT id, name FROM material_types WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
-                        $units = $this->pdo->query("SELECT id, code FROM units ORDER BY code ASC")->fetchAll();
+                        $units = $this->pdo->query("SELECT id, code, name FROM units ORDER BY code ASC")->fetchAll();
                         $suppliers = $this->pdo->query("SELECT id, name FROM suppliers WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
 
                         $this->render('materials/form', [
@@ -290,7 +290,7 @@ final class MaterialsController extends Controller
                     $existing = $this->findMaterialByProductCode($productCode);
                     if ($existing) {
                         $types = $this->pdo->query("SELECT id, name FROM material_types WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
-                        $units = $this->pdo->query("SELECT id, code FROM units ORDER BY code ASC")->fetchAll();
+                        $units = $this->pdo->query("SELECT id, code, name FROM units ORDER BY code ASC")->fetchAll();
                         $suppliers = $this->pdo->query("SELECT id, name FROM suppliers WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
 
                         $this->render('materials/form', [
@@ -328,7 +328,7 @@ final class MaterialsController extends Controller
         }
 
         $types = $this->pdo->query("SELECT id, name FROM material_types WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
-        $units = $this->pdo->query("SELECT id, code FROM units ORDER BY code ASC")->fetchAll();
+        $units = $this->pdo->query("SELECT id, code, name FROM units ORDER BY code ASC")->fetchAll();
         $suppliers = $this->pdo->query("SELECT id, name FROM suppliers WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
 
         $this->render('materials/form', [
@@ -397,7 +397,7 @@ final class MaterialsController extends Controller
                 if (is_array($existing)) {
                     if ($conflictAction !== 'overwrite') {
                         $types = $this->pdo->query("SELECT id, name FROM material_types WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
-                        $units = $this->pdo->query("SELECT id, code FROM units ORDER BY code ASC")->fetchAll();
+                        $units = $this->pdo->query("SELECT id, code, name FROM units ORDER BY code ASC")->fetchAll();
                         $suppliers = $this->pdo->query("SELECT id, name FROM suppliers WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
 
                         $this->render('materials/form', [
@@ -473,7 +473,7 @@ final class MaterialsController extends Controller
         }
 
         $types = $this->pdo->query("SELECT id, name FROM material_types WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
-        $units = $this->pdo->query("SELECT id, code FROM units ORDER BY code ASC")->fetchAll();
+        $units = $this->pdo->query("SELECT id, code, name FROM units ORDER BY code ASC")->fetchAll();
         $suppliers = $this->pdo->query("SELECT id, name FROM suppliers WHERE is_active = 1 ORDER BY name ASC")->fetchAll();
 
         $this->render('materials/form', [

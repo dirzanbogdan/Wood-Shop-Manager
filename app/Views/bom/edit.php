@@ -32,7 +32,7 @@ declare(strict_types=1);
               <select name="material_id" required>
                 <?php foreach ($allMaterials as $m): ?>
                   <option value="<?= (int) $m['id'] ?>">
-                    <?= htmlspecialchars((string) $m['name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars((string) $m['unit_code'], ENT_QUOTES, 'UTF-8') ?>)
+                    <?= htmlspecialchars((string) $m['name'], ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars((string) $m['unit_code'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars((string) ($m['unit_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>)
                   </option>
                 <?php endforeach; ?>
               </select>

@@ -80,7 +80,7 @@ $canArchive = $isEdit && array_key_exists('is_archived', (array) $material) && (
         <select name="unit_id" required>
           <?php foreach ($units as $u): ?>
             <option value="<?= (int) $u['id'] ?>" <?= $selectedUnitId === (int) $u['id'] ? 'selected' : '' ?>>
-              <?= htmlspecialchars((string) $u['code'], ENT_QUOTES, 'UTF-8') ?>
+              <?= htmlspecialchars((string) $u['code'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars((string) ($u['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>)
             </option>
           <?php endforeach; ?>
         </select>

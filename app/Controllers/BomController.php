@@ -67,10 +67,10 @@ final class BomController extends Controller
         $machines->execute([$id]);
 
         $allMaterials = $this->pdo->query(
-            "SELECT m.id, m.name, u.code AS unit_code, m.unit_id
+            "SELECT m.id, m.name, u.code AS unit_code, u.name AS unit_name, m.unit_id
              FROM materials m
              JOIN units u ON u.id = m.unit_id
-             WHERE m.is_archived = 0
+              WHERE m.is_archived = 0
              ORDER BY m.name ASC"
         )->fetchAll();
 
