@@ -202,6 +202,29 @@ final class UpdateController extends Controller
         $f = $_FILES['download_file'];
         $err = isset($f['error']) ? (int) $f['error'] : UPLOAD_ERR_NO_FILE;
         if ($err !== UPLOAD_ERR_OK) {
+            $uploadMax = (string) (ini_get('upload_max_filesize') ?: '');
+            $postMax = (string) (ini_get('post_max_size') ?: '');
+            if ($err === UPLOAD_ERR_INI_SIZE) {
+                return ['ok' => false, 'message' => 'Fisier prea mare pentru server (upload_max_filesize=' . $uploadMax . ', post_max_size=' . $postMax . ').'];
+            }
+            if ($err === UPLOAD_ERR_FORM_SIZE) {
+                return ['ok' => false, 'message' => 'Fisier prea mare (limita formular).'];
+            }
+            if ($err === UPLOAD_ERR_PARTIAL) {
+                return ['ok' => false, 'message' => 'Upload incomplet. Incearca din nou.'];
+            }
+            if ($err === UPLOAD_ERR_NO_FILE) {
+                return ['ok' => false, 'message' => 'Nu a fost selectat niciun fisier.'];
+            }
+            if ($err === UPLOAD_ERR_NO_TMP_DIR) {
+                return ['ok' => false, 'message' => 'Lipseste directorul temporar pentru upload.'];
+            }
+            if ($err === UPLOAD_ERR_CANT_WRITE) {
+                return ['ok' => false, 'message' => 'Nu pot scrie fisierul uploadat pe disk.'];
+            }
+            if ($err === UPLOAD_ERR_EXTENSION) {
+                return ['ok' => false, 'message' => 'Upload blocat de o extensie PHP.'];
+            }
             return ['ok' => false, 'message' => 'Upload esuat (cod ' . $err . ').'];
         }
         $tmp = isset($f['tmp_name']) ? (string) $f['tmp_name'] : '';
@@ -244,6 +267,155 @@ final class UpdateController extends Controller
         return ['ok' => true, 'message' => 'Build uploadat: /downloads/' . $latestName];
     }
 
+    private function iniSizeToBytes(?string $value): int
+    {
+        if (!is_string($value)) {
+            return 0;
+        }
+        $s = trim($value);
+        if ($s === '') {
+            return 0;
+        }
+        if (!preg_match('/^(\d+(?:\.\d+)?)\s*([KMGT])?\s*B?$/i', $s, $m)) {
+            return 0;
+        }
+        $num = (float) $m[1];
+        $unit = isset($m[2]) ? strtoupper((string) $m[2]) : '';
+        $mul = 1.0;
+        if ($unit === 'K') {
+            $mul = 1024.0;
+        } elseif ($unit === 'M') {
+            $mul = 1024.0 * 1024.0;
+        } elseif ($unit === 'G') {
+            $mul = 1024.0 * 1024.0 * 1024.0;
+        } elseif ($unit === 'T') {
+            $mul = 1024.0 * 1024.0 * 1024.0 * 1024.0;
+        }
+        $bytes = (int) floor($num * $mul);
+        return $bytes > 0 ? $bytes : 0;
+    }
+
+    private function localConfigPath(string $root): string
+    {
+        return $root . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'local.php';
+    }
+
+    private function cleanUrl(string $raw): string
+    {
+        $s = trim($raw);
+        $s = trim($s, " \t\n\r\0\x0B`\"'<>");
+        return trim($s);
+    }
+
+    private function clampInt(int $v, int $min, int $max): int
+    {
+        if ($v < $min) {
+            return $min;
+        }
+        if ($v > $max) {
+            return $max;
+        }
+        return $v;
+    }
+
+    private function exportPhp(array $value, int $indent = 0): string
+    {
+        $pad = str_repeat('    ', $indent);
+        $pad2 = str_repeat('    ', $indent + 1);
+        $parts = [];
+        $isList = array_keys($value) === range(0, count($value) - 1);
+        foreach ($value as $k => $v) {
+            $key = $isList ? '' : var_export($k, true) . ' => ';
+            if (is_array($v)) {
+                $parts[] = $pad2 . $key . $this->exportPhp($v, $indent + 1) . ',';
+                continue;
+            }
+            $parts[] = $pad2 . $key . var_export($v, true) . ',';
+        }
+        if (!$parts) {
+            return '[]';
+        }
+        return "[\n" . implode("\n", $parts) . "\n" . $pad . "]";
+    }
+
+    private function updateLocalPhpConfigFromPost(string $root): array
+    {
+        $localPath = $this->localConfigPath($root);
+        $local = [];
+        if (is_file($localPath)) {
+            $loaded = require $localPath;
+            if (is_array($loaded)) {
+                $local = $loaded;
+            }
+        }
+
+        $baseUrl = $this->cleanUrl((string) ($_POST['base_url'] ?? ''));
+        if ($baseUrl === '' || filter_var($baseUrl, FILTER_VALIDATE_URL) === false) {
+            return ['ok' => false, 'message' => 'Base URL invalid.'];
+        }
+
+        $gitBranch = trim((string) ($_POST['git_branch'] ?? 'main'));
+        if ($gitBranch === '' || !preg_match('/^[A-Za-z0-9._\\/-]{1,120}$/', $gitBranch)) {
+            return ['ok' => false, 'message' => 'Git branch invalid.'];
+        }
+
+        $corsOrigin = $this->cleanUrl((string) ($_POST['cors_origin'] ?? $baseUrl));
+        if ($corsOrigin === '' || filter_var($corsOrigin, FILTER_VALIDATE_URL) === false) {
+            return ['ok' => false, 'message' => 'CORS origin invalid.'];
+        }
+
+        $allowCred = isset($_POST['cors_allow_credentials']) && (string) $_POST['cors_allow_credentials'] === '1';
+        $ttlDays = $this->clampInt((int) ($_POST['token_ttl_days'] ?? 30), 1, 365);
+
+        $tokenSecret = trim((string) ($_POST['token_secret'] ?? ''));
+        if ($tokenSecret !== '') {
+            if (!preg_match('/^[0-9a-f]{64}$/i', $tokenSecret)) {
+                return ['ok' => false, 'message' => 'Token secret invalid (trebuie 64 hex).'];
+            }
+        } else {
+            $existing = null;
+            if (isset($local['security']) && is_array($local['security']) && isset($local['security']['api_token_secret'])) {
+                $existing = is_string($local['security']['api_token_secret']) ? trim($local['security']['api_token_secret']) : '';
+            }
+            if (is_string($existing) && preg_match('/^[0-9a-f]{64}$/i', $existing)) {
+                $tokenSecret = $existing;
+            } else {
+                $tokenSecret = bin2hex(random_bytes(32));
+            }
+        }
+
+        if (!isset($local['app']) || !is_array($local['app'])) {
+            $local['app'] = [];
+        }
+        if (!isset($local['update']) || !is_array($local['update'])) {
+            $local['update'] = [];
+        }
+        if (!isset($local['security']) || !is_array($local['security'])) {
+            $local['security'] = [];
+        }
+        if (!isset($local['api']) || !is_array($local['api'])) {
+            $local['api'] = [];
+        }
+
+        $local['app']['base_url'] = $baseUrl;
+        $local['update']['git_branch'] = $gitBranch;
+        $local['security']['api_token_secret'] = $tokenSecret;
+        $local['security']['api_token_ttl_days'] = $ttlDays;
+        $local['api']['cors_allowed_origins'] = [$corsOrigin];
+        $local['api']['cors_allow_credentials'] = $allowCred;
+
+        $out = "<?php\n\ndeclare(strict_types=1);\n\nreturn " . $this->exportPhp($local) . ";\n";
+        $dir = dirname($localPath);
+        if (!is_dir($dir)) {
+            return ['ok' => false, 'message' => 'Folderul config nu exista: ' . $dir];
+        }
+        if (file_put_contents($localPath, $out) === false) {
+            return ['ok' => false, 'message' => 'Nu pot scrie: config/local.php'];
+        }
+
+        return ['ok' => true, 'message' => 'Config actualizat: config/local.php'];
+    }
+
     public function index(): void
     {
         $this->requireAuth();
@@ -253,7 +425,16 @@ final class UpdateController extends Controller
         $action = isset($_POST['action']) && is_string($_POST['action']) ? $_POST['action'] : '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!CSRF::verify($csrfKey, $_POST[$csrfKey] ?? null)) {
+            $token = $_POST[$csrfKey] ?? null;
+            if (!CSRF::verify($csrfKey, is_string($token) ? $token : null)) {
+                $contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
+                $postMax = $this->iniSizeToBytes((string) (ini_get('post_max_size') ?: ''));
+                if ($contentLength > 0 && $postMax > 0 && $contentLength > $postMax && empty($_POST) && empty($_FILES)) {
+                    $pm = (string) (ini_get('post_max_size') ?: '');
+                    $um = (string) (ini_get('upload_max_filesize') ?: '');
+                    Flash::set('error', 'Upload prea mare pentru server (post_max_size=' . $pm . ', upload_max_filesize=' . $um . '). Mareste limitele in PHP si reincarca.');
+                    $this->redirect('update/index');
+                }
                 Flash::set('error', 'Sesiune invalida. Reincarca pagina.');
                 $this->redirect('update/index');
             }
@@ -280,6 +461,12 @@ final class UpdateController extends Controller
                 Flash::set($res['ok'] ? 'success' : 'error', $res['message']);
                 $this->redirect('update/index');
             }
+
+            if ($action === 'update_local_config') {
+                $res = $this->updateLocalPhpConfigFromPost($this->projectRoot());
+                Flash::set($res['ok'] ? 'success' : 'error', $res['message']);
+                $this->redirect('update/index');
+            }
         }
 
         $currentVersion = isset($this->config['app']['version']) ? (string) $this->config['app']['version'] : '';
@@ -292,6 +479,14 @@ final class UpdateController extends Controller
         $git = $this->gitInfo();
         $changelog = $this->loadChangelog();
         $updateBranch = $this->updateGitBranch();
+        $cfgBaseUrl = isset($this->config['app']['base_url']) ? (string) $this->config['app']['base_url'] : '';
+        $cfgCorsOrigin = '';
+        if (isset($this->config['api']['cors_allowed_origins']) && is_array($this->config['api']['cors_allowed_origins'])) {
+            $first = $this->config['api']['cors_allowed_origins'][0] ?? '';
+            $cfgCorsOrigin = is_string($first) ? $first : '';
+        }
+        $cfgCorsAllowCred = isset($this->config['api']['cors_allow_credentials']) ? (bool) $this->config['api']['cors_allow_credentials'] : false;
+        $cfgTokenTtlDays = isset($this->config['security']['api_token_ttl_days']) ? (int) $this->config['security']['api_token_ttl_days'] : 30;
 
         $apkRel = $this->mobileLatestRelPath();
         $apkUrl = $this->absoluteUrl($apkRel);
@@ -317,6 +512,10 @@ final class UpdateController extends Controller
             'git_info' => $git,
             'changelog' => $changelog,
             'update_git_branch' => $updateBranch,
+            'cfg_base_url' => $cfgBaseUrl,
+            'cfg_cors_origin' => $cfgCorsOrigin,
+            'cfg_cors_allow_credentials' => $cfgCorsAllowCred,
+            'cfg_token_ttl_days' => $cfgTokenTtlDays,
             'apk_rel' => $apkRel,
             'apk_url' => $apkUrl,
             'apk_size' => $apkSize,

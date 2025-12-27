@@ -108,6 +108,52 @@ $fmtSize = static function (?int $bytes): string {
 <div class="grid" style="margin-top: 12px">
   <div class="col-12">
     <div class="card">
+      <h3 style="margin-top:0">Config (config/local.php)</h3>
+      <p class="muted" style="margin-top:0">Actualizeaza setari locale direct din UI (base URL, branch update, CORS, token API).</p>
+
+      <form method="post" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end">
+        <input type="hidden" name="<?= $esc((string) ($csrf_key ?? 'csrf_token')) ?>" value="<?= $esc((string) ($csrf ?? '')) ?>">
+        <input type="hidden" name="action" value="update_local_config">
+
+        <div style="display:flex; flex-direction:column; gap:6px; min-width: 280px; flex: 1">
+          <label for="base_url">Base URL</label>
+          <input id="base_url" name="base_url" type="url" required value="<?= $esc((string) ($cfg_base_url ?? '')) ?>" placeholder="https://exemplu.ro">
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px; min-width: 200px">
+          <label for="git_branch">Git branch (update)</label>
+          <input id="git_branch" name="git_branch" type="text" value="<?= $esc((string) ($update_git_branch ?? 'main')) ?>" placeholder="main">
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px; min-width: 280px; flex: 1">
+          <label for="cors_origin">CORS origin</label>
+          <input id="cors_origin" name="cors_origin" type="url" value="<?= $esc((string) (($cfg_cors_origin ?? '') !== '' ? $cfg_cors_origin : ($cfg_base_url ?? ''))) ?>" placeholder="https://exemplu.ro">
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px; min-width: 180px">
+          <label for="token_ttl_days">Token TTL (zile)</label>
+          <input id="token_ttl_days" name="token_ttl_days" type="number" min="1" max="365" value="<?= $esc((string) (isset($cfg_token_ttl_days) ? (int) $cfg_token_ttl_days : 30)) ?>">
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px; min-width: 240px; flex: 1">
+          <label for="token_secret">Token secret (64 hex, optional)</label>
+          <input id="token_secret" name="token_secret" type="text" value="" placeholder="Lasa gol pentru a pastra/genera">
+        </div>
+
+        <label style="display:flex; gap:8px; align-items:center; margin: 0 6px 6px 0">
+          <input type="checkbox" name="cors_allow_credentials" value="1" <?= (($cfg_cors_allow_credentials ?? false) === true) ? 'checked' : '' ?>>
+          <span>CORS allow credentials</span>
+        </label>
+
+        <button class="btn primary" type="submit" onclick="return confirm('Actualizezi config/local.php?');">Salveaza config</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="grid" style="margin-top: 12px">
+  <div class="col-12">
+    <div class="card">
       <h3 style="margin-top:0">APK / downloads</h3>
       <div class="muted">Ultima versiune (link fix): <a href="<?= $esc((string) ($apk_url ?? '')) ?>"><?= $esc((string) ($apk_rel ?? '')) ?></a></div>
       <div class="muted">
