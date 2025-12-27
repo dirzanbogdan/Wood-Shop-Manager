@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.27122025.002
+
+- Update: upload build-uri (APK/AAB/IPA/EXE/MSIX) în `public/downloads` cu arhivare automată
+- Update: configurare `config/local.php` direct din UI (base URL, branch update, CORS, token API)
+- Update: nu mai blochează update-ul când există modificări locale doar în `mobile/*` (auto skip-worktree)
+- Update: mesaje mai clare când upload-ul depășește limitele PHP (`post_max_size` / `upload_max_filesize`)
+- UI: în listele de unități apare codul + denumirea (ex: `kg (Kilogram)`)
+
 ## v3.27122025.001
 
 - API v1: răspuns standardizat `ok/data/error/meta` + erori consistente

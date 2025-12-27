@@ -68,6 +68,8 @@ Format versiune: `V<major>.<ddmmyyyy>.<ttt>`
   - afișare log complet la update (exit code + output)
   - cleanup automat dacă repo rămâne “dirty” după update
   - aplicare update din arhiva GitHub (zip) dacă git nu este disponibil
+  - configurare `config/local.php` direct din UI
+  - upload build-uri (APK/AAB/IPA/EXE/MSIX) în `public/downloads` cu arhivare automată
 
 ## Instalare
 
@@ -86,3 +88,5 @@ Include:
 - Backup DB (download `.sql` sau salvare pe server)
 - Aplicare update din git (`git pull --ff-only`) când git + `proc_open` sunt disponibile
 - Alternativ: update din arhiva GitHub (zip) când git nu este disponibil
+- Configurare `config/local.php` direct din UI (base URL, branch update, CORS, token API)
+- Upload build-uri (APK/AAB/IPA/EXE/MSIX) în `public/downloads` cu arhivare automată
